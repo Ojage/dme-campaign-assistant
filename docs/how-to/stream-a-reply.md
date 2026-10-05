@@ -1,0 +1,58 @@
+# Consume a streamed chat reply
+
+Goal: show a reply appearing token by token in the browser.
+
+## The transport
+
+Use the shared client rather than `fetch`, because it validates each frame against
+the contract and throws on a frame it does not recognise:
+
+```ts
+import { apiClient } from '@/lib/api/apiClient'
+
+const stream = await apiClient.stream('chat.messages.stream', {
+  params: { threadId },
+  body: { content: 'Why did churn rise this month?' },
+})
+
+for await (const event of stream) {
+  if (event.type === 'delta') appendToUi(event.content)
+  if (event.type === 'done') replaceWithStoredMessage(event.message)
+  if (event.type === 'error') showFailure(event.message)
+}
+```
+
+The client handles the token, the response status and the framing; your code only
+sees validated events.
+
+## Handling the four event types
+
+- `start` — the assistant message exists. Keep its id: the transcript will be
+  re-rendered from stored messages after a reload.
+- `delta` — append the fragment. Do not assume it is a word.
+- `done` — replace what you appended with `event.message`. It is what the server
+  stored, so a delta that was dropped in transit cannot leave the UI lying.
+- `error` — generation failed; discard the partial text.
+
+## Stopping early
+
+The call accepts an `AbortSignal`, so leaving the page or sending another message
+can cancel the stream:
+
+```ts
+const controller = new AbortController()
+const stream = apiClient.stream('chat.messages.stream', { params: { threadId }, body, signal: controller.signal })
+controller.abort()
+```
+
+Cancelling closes the connection; the server stops generating.
+
+## Notes
+
+- **A proxy must not buffer this route.** If replies arrive all at once in
+  production but not locally, the proxy in front of the API is buffering
+  `text/event-stream`. The API already skips body parsing for this route.
+- **`chat.messages.send` is the same operation without streaming.** Use it when a
+  complete reply in one piece is fine — a report, a background job.
+- **An expired token is refreshed once**, then the stream is retried. See
+  [sessions](../explanation/authentication.md).

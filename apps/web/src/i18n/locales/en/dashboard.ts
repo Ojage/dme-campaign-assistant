@@ -1,0 +1,38 @@
+/** Dashboard page strings. */
+export default {
+  title: 'Dashboard',
+  description: 'Your customers, segments, and campaigns at a glance.',
+  newCampaign: 'New campaign',
+  kpis: {
+    totalCustomers: 'Total customers',
+    allStatuses: 'All statuses',
+    activeCustomers: 'Active customers',
+    ofBase: '{{n}}% of base',
+    totalValue: 'Total transaction value',
+    avgValue: 'Avg. customer value',
+    lifetimeSpend: 'Lifetime spend per customer',
+  },
+  charts: {
+    revenueTrend: 'Revenue trend',
+    revenueTrendDesc: 'Monthly transaction value, last 6 months',
+    revenue: 'Revenue',
+    spendByCountry: 'Spend by country',
+    spendByCountryDesc: 'Where transaction value concentrates',
+    spend: 'Spend',
+    status: 'Customer status',
+    statusDesc: 'Health of the customer base',
+    count: '{{n}} customers',
+    active: 'Active',
+    inactive: 'Inactive',
+  },
+  stats: {
+    customerBase: 'Customer base',
+    acrossMarkets: 'Across all markets',
+    activeShare: 'Active share',
+    activeVsTotal: 'Active vs total',
+    lifetimeValue: 'Lifetime value',
+    avgPerCustomer: 'Avg {{value}} per customer',
+    segmentsReady: 'Segments ready',
+    savedAudiences: 'Saved audiences',
+  },
+}

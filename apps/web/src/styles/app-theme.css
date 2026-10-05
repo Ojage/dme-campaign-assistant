@@ -1,0 +1,85 @@
+/* Campaign Assistant theme overrides — deep crimson primary, warm amber accent.
+   These override the defaults in theme.css for both light and dark mode.
+   Loaded from src/styles/index.css, which also owns the webfont import. */
+
+:root:root {
+  --background: 0 0% 98%;            /* #FAFAFA */
+  --foreground: 240 5% 11%;          /* #1C1C1E */
+  --card: 0 0% 100%;                 /* #FFFFFF */
+  --card-foreground: 240 5% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 5% 11%;
+  --primary: 6 64% 46%;              /* #C0392B — deep crimson, primary actions only */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 240 5% 11%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;    /* #6B7280 */
+  --body-foreground: 220 9% 30%;
+  --accent: 28 79% 52%;              /* #E67E22 — warm amber, highlight only */
+  --accent-foreground: 0 0% 100%;
+  --destructive: 6 64% 46%;
+  --destructive-foreground: 0 0% 100%;
+  --warning: 28 79% 52%;
+  --warning-foreground: 0 0% 100%;
+  --success: 145 55% 38%;
+  --success-foreground: 0 0% 100%;
+  --border: 220 14% 91%;             /* #E5E7EB */
+  --input: 220 14% 91%;
+  --ring: 6 64% 46%;
+  --chart-1: 6 64% 46%;              /* crimson */
+  --chart-2: 28 79% 52%;             /* amber */
+  --chart-3: 240 27% 14%;            /* sidebar navy-charcoal */
+  --chart-4: 220 9% 46%;
+  --chart-5: 220 14% 70%;
+  --bar: 357 58% 22%;               /* oxblood — rich, not alarming */
+  --bar-hover: 357 46% 28%;
+  --bar-foreground: 0 0% 100%;
+  --sidebar: 0 0% 87%;               /* gainsboro-ish light grey */
+  --sidebar-foreground: 240 6% 16%;
+  --sidebar-accent: 0 0% 80%;
+  --sidebar-border: 0 0% 78%;
+  /* Cards only — barely-there shadow */
+  --shadow-retool-sm: 0 1px 2px rgba(55, 55, 55, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+  --font-sans: 'Cabin', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+:root.dark {
+  --background: 240 10% 7%;
+  --foreground: 0 0% 95%;
+  --card: 240 9% 11%;
+  --card-foreground: 0 0% 95%;
+  --popover: 240 9% 11%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 6 70% 52%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 8% 16%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 240 8% 16%;
+  --muted-foreground: 220 8% 62%;
+  --body-foreground: 220 8% 80%;
+  --accent: 28 85% 55%;
+  --accent-foreground: 240 10% 8%;
+  --destructive: 6 70% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --warning: 28 85% 55%;
+  --warning-foreground: 240 10% 8%;
+  --success: 145 50% 45%;
+  --success-foreground: 240 10% 8%;
+  --border: 240 8% 20%;
+  --input: 240 8% 20%;
+  --ring: 6 70% 52%;
+  --chart-1: 6 70% 52%;
+  --chart-2: 28 85% 55%;
+  --chart-3: 240 20% 70%;
+  --chart-4: 220 8% 62%;
+  --chart-5: 220 8% 40%;
+  --bar: 357 50% 16%;
+  --bar-hover: 357 42% 22%;
+  --bar-foreground: 0 0% 100%;
+  --sidebar: 240 5% 18%;
+  --sidebar-foreground: 0 0% 88%;
+  --sidebar-accent: 240 5% 25%;
+  --sidebar-border: 240 5% 28%;
+  --shadow-retool-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
+}

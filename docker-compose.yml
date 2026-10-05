@@ -1,0 +1,24 @@
+name: dme-campaigns
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: dme-campaigns-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-campaigns}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campaigns}
+      POSTGRES_DB: ${POSTGRES_DB:-campaigns}
+    ports:
+      - '${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - campaigns-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-campaigns} -d ${POSTGRES_DB:-campaigns}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  campaigns-postgres-data:

@@ -1,0 +1,33 @@
+/** Chaînes de l’écran de connexion : marque, libellés, validation et échecs. */
+export default {
+  title: 'Bon retour',
+  description: 'Connectez-vous pour accéder à l’espace de campagnes.',
+  brandTitle: 'Campaign Assistant',
+  brandSubtitle: 'Outil interne · Marketing DME',
+  email: 'Adresse e-mail',
+  emailPlaceholder: 'vous@dme.cm',
+  password: 'Mot de passe',
+  passwordPlaceholder: 'Saisissez votre mot de passe',
+  showPassword: 'Afficher le mot de passe',
+  hidePassword: 'Masquer le mot de passe',
+  submit: 'Se connecter',
+  submitting: 'Connexion…',
+  submittingHint: 'Vérification de vos identifiants…',
+  forgotPassword: 'Mot de passe oublié ?',
+  forgotPasswordHint: 'Contactez l’administrateur de l’espace de travail pour réinitialiser l’accès.',
+  demoTitle: 'Accès de démonstration',
+  demoHint: 'Utilisez {{email}} avec le mot de passe {{password}}, ou l’un des comptes préchargés.',
+  errors: {
+    userNotFound: 'Aucun compte ne correspond à cette adresse e-mail.',
+    invalidCredentials: 'Cette combinaison e-mail / mot de passe est incorrecte.',
+    userInactive: 'Ce compte a été désactivé. Contactez un administrateur.',
+    network: 'Serveur injoignable. Réessayez dans un instant.',
+  },
+  validation: {
+    emailRequired: 'L’e-mail est obligatoire.',
+    emailFormat: 'Saisissez une adresse e-mail valide.',
+    passwordRequired: 'Le mot de passe est obligatoire.',
+    passwordTooShort: 'Le mot de passe doit contenir au moins {{n}} caractères.',
+  },
+  footer: 'Espace protégé · réservé aux membres autorisés de l’équipe',
+}

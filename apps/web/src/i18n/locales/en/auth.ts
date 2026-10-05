@@ -1,0 +1,33 @@
+/** Sign-in screen strings: brand block, field labels, validation and failures. */
+export default {
+  title: 'Welcome back',
+  description: 'Sign in to reach the campaign workspace.',
+  brandTitle: 'Campaign Assistant',
+  brandSubtitle: 'Internal tool · DME Marketing',
+  email: 'Email address',
+  emailPlaceholder: 'you@dme.cm',
+  password: 'Password',
+  passwordPlaceholder: 'Enter your password',
+  showPassword: 'Show password',
+  hidePassword: 'Hide password',
+  submit: 'Sign in',
+  submitting: 'Signing in…',
+  submittingHint: 'Checking your credentials…',
+  forgotPassword: 'Forgot your password?',
+  forgotPasswordHint: 'Contact your workspace administrator to reset access.',
+  demoTitle: 'Demo access',
+  demoHint: 'Use {{email}} with the password {{password}}, or any of the seeded accounts.',
+  errors: {
+    userNotFound: 'No account matches that email address.',
+    invalidCredentials: 'That email and password combination is incorrect.',
+    userInactive: 'This account has been deactivated. Contact an administrator.',
+    network: 'We could not reach the server. Try again in a moment.',
+  },
+  validation: {
+    emailRequired: 'Email is required.',
+    emailFormat: 'Enter a valid email address.',
+    passwordRequired: 'Password is required.',
+    passwordTooShort: 'Password must be at least {{n}} characters.',
+  },
+  footer: 'Protected workspace · authorised team members only',
+}

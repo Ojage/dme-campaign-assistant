@@ -1,0 +1,122 @@
+import { Inject, Injectable, Logger } from '@nestjs/common'
+import Anthropic from '@anthropic-ai/sdk'
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
+import type * as z from 'zod/v4'
+import { ENV } from '../../../config/env'
+import type { AppConfig } from '../../../config/env'
+import { ModelProviderError } from '../../domain/domain.errors'
+import type {
+  ModelTurn,
+  TextGenerationRequest,
+  TextGenerationResult,
+  TextModel,
+} from '../../application/ports/text-model.port'
+import type {
+  StructuredGenerationRequest,
+  StructuredGenerationResult,
+  StructuredModel,
+} from '../../application/ports/structured-model.port'
+
+/** Turns the port's turns into the SDK's message shape. */
+function toMessages(turns: readonly ModelTurn[]): Anthropic.MessageParam[] {
+  return turns.map((turn) => ({ role: turn.role, content: turn.content }))
+}
+
+/** Concatenates the text blocks of a completed message. */
+function readText(content: Anthropic.ContentBlock[]): string {
+  return content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
+}
+
+/**
+ * Anthropic adapter. This is the only file in the codebase that imports the
+ * vendor SDK, so switching or adding a provider is a change to this class plus one
+ * line in `LlmModule`.
+ *
+ * It satisfies both model ports: plain text and schema-validated JSON, the latter
+ * using the SDK's structured-output helper so the response is validated against
+ * the same zod schema the API already trusts.
+ */
+@Injectable()
+export class AnthropicModelAdapter implements TextModel, StructuredModel {
+  public readonly modelId: string
+  readonly #client: Anthropic
+  readonly #maxTokens: number
+  readonly #logger = new Logger(AnthropicModelAdapter.name)
+
+  public constructor(@Inject(ENV) config: AppConfig) {
+    this.#client = new Anthropic({ apiKey: config.anthropic.apiKey })
+    this.modelId = config.anthropic.model
+    this.#maxTokens = config.anthropic.maxTokens
+  }
+
+  public async generate(request: TextGenerationRequest): Promise<TextGenerationResult> {
+    try {
+      const message = await this.#client.messages.create({
+        model: this.modelId,
+        max_tokens: request.maxTokens ?? this.#maxTokens,
+        ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+        system: request.system,
+        messages: toMessages(request.turns),
+      })
+      return { text: readText(message.content), model: message.model }
+    } catch (cause) {
+      throw this.#toDomainError(cause)
+    }
+  }
+
+  public async *stream(request: TextGenerationRequest): AsyncGenerator<string, void, undefined> {
+    try {
+      const stream = await this.#client.messages.create({
+        model: this.modelId,
+        max_tokens: request.maxTokens ?? this.#maxTokens,
+        system: request.system,
+        messages: toMessages(request.turns),
+        stream: true,
+      })
+
+      for await (const event of stream) {
+        // Only text deltas matter here; thinking and tool blocks are ignored.
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          yield event.delta.text
+        }
+      }
+    } catch (cause) {
+      throw this.#toDomainError(cause)
+    }
+  }
+
+  public async generateStructured<TSchema extends z.ZodTypeAny>(
+    request: StructuredGenerationRequest<TSchema>,
+  ): Promise<StructuredGenerationResult<z.output<TSchema>>> {
+    try {
+      const parsed = await this.#client.messages.parse({
+        model: this.modelId,
+        max_tokens: request.maxTokens ?? this.#maxTokens,
+        system: request.system,
+        messages: toMessages(request.turns),
+        output_config: { format: zodOutputFormat(request.schema) },
+      })
+      return { data: parsed.parsed_output as z.output<TSchema>, model: parsed.model }
+    } catch (cause) {
+      throw this.#toDomainError(cause)
+    }
+  }
+
+  /** Provider faults become domain errors; credentials never leak into a response. */
+  #toDomainError(cause: unknown): ModelProviderError {
+    if (cause instanceof ModelProviderError) return cause
+    const status = cause instanceof Anthropic.APIError ? cause.status : undefined
+    this.#logger.error(`Anthropic request failed: ${String(cause)}`)
+    const retryable = status === undefined || status === 429 || status >= 500
+    return new ModelProviderError(
+      retryable
+        ? 'The content model is temporarily unavailable. Try again shortly.'
+        : 'The content model rejected the request.',
+      retryable ? 'llm_unavailable' : 'llm_error',
+      { cause },
+    )
+  }
+}

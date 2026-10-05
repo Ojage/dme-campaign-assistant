@@ -1,0 +1,60 @@
+/** Shared strings: shell, navigation, theme, language, generic actions. */
+export default {
+  app: {
+    title: 'Campaign',
+    titleLine2: 'Assistant',
+    footer: 'Internal tool · DME Marketing',
+  },
+  nav: {
+    dashboard: 'Dashboard',
+    customers: 'Customers',
+    segments: 'Segments',
+    campaigns: 'Campaigns',
+  },
+  topbar: {
+    team: 'Marketing team',
+    theme: 'Theme',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeSystem: 'System',
+    language: 'Language',
+    langEnglish: 'English',
+    langFrench: 'Français',
+    agent: 'Agent',
+    search: 'Search',
+    searchPlaceholder: 'Search customers, segments, campaigns…',
+    recent: 'Recent',
+    esc: 'ESC',
+    noResults: 'No results',
+    signOut: 'Sign out',
+  },
+  agent: {
+    title: 'Agent',
+    welcome: 'Hi! I can summarize segments, draft campaign ideas, or explain your customer data. What do you need?',
+    placeholder: 'Ask the assistant anything…',
+    send: 'Send',
+    thinking: 'Thinking…',
+    replies: [
+      'Your active share is strongest in Cameroon — a weekend SMS push to the high-spender segment would land well.',
+      'I can draft that. Try the Campaigns page: pick the dormant VIPs segment with a friendly tone and I’ll shape the copy.',
+      'Churn risk clusters among customers inactive 60+ days. A win-back email with a saved-items hook is a good first move.',
+    ],
+  },
+  status: {
+    active: 'Active',
+    inactive: 'Inactive',
+    churned: 'Churned',
+    all: 'All statuses',
+  },
+  actions: {
+    retry: 'Retry',
+    cancel: 'Cancel',
+    close: 'Close',
+    previous: 'Previous',
+    next: 'Next',
+    refreshing: 'Refreshing…',
+  },
+  errors: {
+    generic: 'Something went wrong',
+  },
+}

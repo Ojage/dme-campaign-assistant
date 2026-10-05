@@ -1,0 +1,38 @@
+/** Chaînes de la page Tableau de bord. */
+export default {
+  title: 'Tableau de bord',
+  description: 'Vos clients, segments et campagnes en un coup d’œil.',
+  newCampaign: 'Nouvelle campagne',
+  kpis: {
+    totalCustomers: 'Clients au total',
+    allStatuses: 'Tous les statuts',
+    activeCustomers: 'Clients actifs',
+    ofBase: '{{n}} % de la base',
+    totalValue: 'Valeur totale des transactions',
+    avgValue: 'Valeur client moyenne',
+    lifetimeSpend: 'Dépense cumulée par client',
+  },
+  charts: {
+    revenueTrend: 'Tendance du chiffre d’affaires',
+    revenueTrendDesc: 'Valeur des transactions par mois, 6 derniers mois',
+    revenue: 'Chiffre d’affaires',
+    spendByCountry: 'Dépenses par pays',
+    spendByCountryDesc: 'Répartition de la valeur des transactions',
+    spend: 'Dépenses',
+    status: 'Statut des clients',
+    statusDesc: 'Santé de la base clients',
+    count: '{{n}} clients',
+    active: 'Actifs',
+    inactive: 'Inactifs',
+  },
+  stats: {
+    customerBase: 'Base clients',
+    acrossMarkets: 'Tous marchés confondus',
+    activeShare: 'Part active',
+    activeVsTotal: 'Actifs vs total',
+    lifetimeValue: 'Valeur cumulée',
+    avgPerCustomer: 'Moy. {{value}} par client',
+    segmentsReady: 'Segments prêts',
+    savedAudiences: 'Audiences enregistrées',
+  },
+}

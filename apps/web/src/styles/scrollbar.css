@@ -1,0 +1,168 @@
+/**
+ * Scrollbar system.
+ *
+ * One designed scrollbar for the whole app instead of whatever the OS ships:
+ * a slim, rounded thumb that brightens on hover, a transparent track, and a
+ * reserved gutter so content never shifts when a container becomes scrollable.
+ *
+ * Chromium/WebKit consume the `::-webkit-scrollbar*` pseudo-elements; Firefox
+ * uses the standard `scrollbar-width` / `scrollbar-color` pair. Both are set
+ * from the same tokens so the two engines stay visually identical.
+ */
+
+:root {
+  /* Bar geometry — kept constant so the reserved gutter never reflows content. */
+  --scrollbar-size: 10px;
+  --scrollbar-thumb-inset: 3px;
+  --scrollbar-track: transparent;
+  --scrollbar-corner: transparent;
+  --scrollbar-thumb: hsl(var(--foreground) / 0.16);
+  --scrollbar-thumb-hover: hsl(var(--foreground) / 0.3);
+  --scrollbar-thumb-active: hsl(var(--primary) / 0.6);
+
+  /* Edge fades for ScrollArea */
+  --scroll-edge-size: 28px;
+  --scroll-edge-color: hsl(var(--background));
+}
+
+:root.dark {
+  --scrollbar-thumb: hsl(var(--foreground) / 0.2);
+  --scrollbar-thumb-hover: hsl(var(--foreground) / 0.34);
+  --scrollbar-thumb-active: hsl(var(--primary) / 0.7);
+  --scroll-edge-color: hsl(var(--background));
+}
+
+@layer base {
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  /* Chromium / WebKit */
+  *::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  *::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background-color: var(--scrollbar-corner);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    /* The transparent border is what makes the thumb read as a floating pill
+       rather than a bar flush with the edges. */
+    min-height: 40px;
+    border: var(--scrollbar-thumb-inset) solid transparent;
+    border-radius: 9999px;
+    background-color: var(--scrollbar-thumb);
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background-color: var(--scrollbar-thumb-active);
+  }
+
+  /* Double-click-to-resize affordance and stray buttons. */
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /* Contained scrolling: a drawer or table that hits its end must not start
+     scrolling the page behind it. */
+  .scroll-contain {
+    overscroll-behavior: contain;
+  }
+}
+
+@layer components {
+  /* Reveals the thumb when the pointer is anywhere over the scroll container —
+     Chromium does not reliably fire :hover on the scrollbar itself. */
+  .scrollbar-lift:hover::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  .scrollbar-lift:hover {
+    scrollbar-color: var(--scrollbar-thumb-hover) var(--scrollbar-track);
+  }
+
+  /* Keyboard scrolling should feel deliberate, not instant — but never for
+     users who asked for less motion. */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+
+  .scroll-stops {
+    scroll-snap-type: y proximity;
+  }
+
+  /* --- ScrollArea ------------------------------------------------------------
+     A scroll container that fades its content at whichever edge still has
+     content behind it, so "there is more below" is visible without a scrollbar
+     being present at all (macOS overlay scrollbars, touch, trackpads). */
+
+  .scroll-area {
+    position: relative;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .scroll-area__viewport {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+    /* Keeps a sticky table header from covering content scrolled to by anchor. */
+    scroll-padding-block: var(--scroll-edge-size);
+  }
+
+  .scroll-area__fade {
+    position: absolute;
+    right: 0;
+    left: 0;
+    height: var(--scroll-edge-size);
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 180ms ease-out;
+  }
+
+  .scroll-area__fade--top {
+    top: 0;
+    background: linear-gradient(to bottom, var(--scroll-edge-color), transparent);
+  }
+
+  .scroll-area__fade--bottom {
+    bottom: 0;
+    background: linear-gradient(to top, var(--scroll-edge-color), transparent);
+  }
+
+  /* Presence-based: the attributes are toggled on the wrapper as booleans. */
+  .scroll-area[data-scroll-top] > .scroll-area__fade--top,
+  .scroll-area[data-scroll-bottom] > .scroll-area__fade--bottom {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-smooth {
+      scroll-behavior: auto;
+    }
+
+    .scroll-area__fade {
+      transition: none;
+    }
+  }
+}

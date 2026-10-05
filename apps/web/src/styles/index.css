@@ -1,0 +1,37 @@
+/**
+ * Global stylesheet — the single entry point imported from src/main.tsx.
+ *
+ * Cascade order matters:
+ *   1. font + token partials (unlayered custom properties)
+ *   2. scrollbar system (base resets + component primitives)
+ *   3. Tailwind base/components/utilities
+ *   4. project base overrides
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import './theme.css';
+@import './app-theme.css';
+@import './scrollbar.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  ::selection {
+    @apply bg-primary/20;
+  }
+}

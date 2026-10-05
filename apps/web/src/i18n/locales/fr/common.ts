@@ -1,0 +1,60 @@
+/** Chaînes partagées : coque, navigation, thème, langue, actions génériques. */
+export default {
+  app: {
+    title: 'Campaign',
+    titleLine2: 'Assistant',
+    footer: 'Outil interne · Marketing DME',
+  },
+  nav: {
+    dashboard: 'Tableau de bord',
+    customers: 'Clients',
+    segments: 'Segments',
+    campaigns: 'Campagnes',
+  },
+  topbar: {
+    team: 'Équipe marketing',
+    theme: 'Thème',
+    themeLight: 'Clair',
+    themeDark: 'Sombre',
+    themeSystem: 'Système',
+    language: 'Langue',
+    langEnglish: 'English',
+    langFrench: 'Français',
+    agent: 'Agent',
+    search: 'Rechercher',
+    searchPlaceholder: 'Rechercher clients, segments, campagnes…',
+    recent: 'Récents',
+    esc: 'ESC',
+    noResults: 'Aucun résultat',
+    signOut: 'Se déconnecter',
+  },
+  agent: {
+    title: 'Agent',
+    welcome: 'Bonjour ! Je peux résumer vos segments, proposer des idées de campagnes ou analyser vos données clients. Que voulez-vous faire ?',
+    placeholder: 'Posez votre question à l’assistant…',
+    send: 'Envoyer',
+    thinking: 'Réflexion…',
+    replies: [
+      'Votre part active est la plus forte au Cameroun — une relance SMS de week-end vers le segment des gros dépensiers serait efficace.',
+      'Je peux rédiger ça. Essayez la page Campagnes : choisissez le segment des VIP dormants avec un ton amical et je façonne le message.',
+      'Le risque d’attrition se concentre chez les clients inactifs depuis plus de 60 jours. Un e-mail de reconquête est un bon premier pas.',
+    ],
+  },
+  status: {
+    active: 'Actif',
+    inactive: 'Inactif',
+    churned: 'Perdu',
+    all: 'Tous les statuts',
+  },
+  actions: {
+    retry: 'Réessayer',
+    cancel: 'Annuler',
+    close: 'Fermer',
+    previous: 'Précédent',
+    next: 'Suivant',
+    refreshing: 'Actualisation…',
+  },
+  errors: {
+    generic: 'Une erreur est survenue',
+  },
+}
