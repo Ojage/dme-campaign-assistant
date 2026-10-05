@@ -25,7 +25,10 @@ export {
   API_VERSION_PREFIX,
   DEPRECATION_HEADER,
   SUNSET_HEADER,
+  deprecationHeaders,
+  findOperation,
   versionedPath,
+  type OperationLike,
 } from './version.js'
 export {
   buildOpenApiDocument,

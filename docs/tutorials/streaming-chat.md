@@ -1,6 +1,6 @@
 # Streaming a chat reply
 
-This tutorial is for readers who want to understand server-sent events by writing
+This tutorial is for readers(ofcourse it is me too) who want to understand server-sent events by writing
 one. It assumes you have finished [your first campaign](first-campaign.md), so
 the API is running and you are signed in.
 
@@ -51,10 +51,10 @@ curl -N -X POST "http://localhost:4000/api/v1/chat/threads/$THREAD/messages/stre
 frames shaped like this:
 
 ```
-data: {"type":"start","messageId":"..."}
-data: {"type":"delta","content":"Re-engaging"}
-data: {"type":"delta","content":" inactive"}
-data: {"type":"done","message":{"id":"...","role":"assistant","content":"..."}}
+data: {"type":"start","threadId":"...","userMessageId":"..."}
+data: {"type":"delta","text":"Re-engaging"}
+data: {"type":"delta","text":" inactive"}
+data: {"type":"done","assistantMessage":{"id":"...","role":"assistant","content":"..."}}
 ```
 
 Notice what is *not* there: no token block, no polling. The connection stays open
@@ -64,11 +64,15 @@ for the whole reply.
 
 Four event types, and the last one always terminates the exchange:
 
-- `start` — the assistant message now exists; its id is final.
-- `delta` — a fragment of text to append. Never assume a delta is a whole word.
-- `done` — the complete assistant message, so a client can reconcile what it
-  appended with what was actually stored.
+- `start` — your message was stored; `userMessageId` is its id.
+- `delta` — a fragment in `text` to append. Never assume a delta is a whole word.
+- `done` — `assistantMessage` is the complete stored message, so a client can
+  reconcile what it appended with what was actually written.
 - `error` — generation failed; the partial text is discarded.
+
+The exact shapes are `chatStreamEventSchema` in
+`packages/contracts/src/domains/chat/contracts.ts`, and every frame is validated
+against it before your code sees it.
 
 Because `done` carries the stored message, a client that only appended deltas
 still ends up consistent with the database. That is deliberate.

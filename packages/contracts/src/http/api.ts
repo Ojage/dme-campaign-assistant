@@ -64,6 +64,11 @@ export interface Operation {
   readonly errors?: readonly ErrorCode[]
   /** Marks a superseded operation that still answers but must not be adopted. */
   readonly deprecated?: boolean
+  /**
+   * Date the operation stops answering, as an HTTP-date. Only meaningful
+   * alongside `deprecated`, and published in the `Sunset` response header.
+   */
+  readonly sunset?: string
 }
 
 /**

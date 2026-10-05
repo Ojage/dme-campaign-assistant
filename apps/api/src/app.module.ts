@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common'
-import { APP_FILTER, APP_GUARD } from '@nestjs/core'
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
 import { AuthModule } from './modules/auth/auth.module'
 import { CampaignsModule } from './modules/campaigns/campaigns.module'
 import { ChatModule } from './modules/chat/chat.module'
 import { CustomersModule } from './modules/customers/customers.module'
 import { DocumentationModule } from './modules/documentation/documentation.module'
+import { DeprecationInterceptor } from './shared/http/deprecation.interceptor'
+import { apiRegistry } from './shared/http/deprecation'
 import { SegmentsModule } from './modules/segments/segments.module'
 import { ConfigModuleRoot } from './config/config.module'
 import { AccessTokenGuard } from './shared/http/access-token.guard'
@@ -31,6 +33,12 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
   providers: [
     // Every route requires a bearer token; @Public() opts out.
     { provide: APP_GUARD, useClass: AccessTokenGuard },
+    {
+      provide: APP_INTERCEPTOR,
+      // The registry is passed explicitly so the interceptor has no ambient
+      // dependency beyond the module that documents the API.
+      useFactory: (): DeprecationInterceptor => new DeprecationInterceptor(apiRegistry),
+    },
     { provide: APP_FILTER, useClass: ProblemDetailsFilter },
   ],
 })

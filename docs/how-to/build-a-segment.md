@@ -7,7 +7,10 @@ Goal: define an audience, check its size before saving it, and save it for reuse
 - Each condition is one field, one operator and one value.
 - **All conditions must hold** — they are combined with AND.
 - Three fields compare numbers (`totalAmountSpent`, `totalTransactions`,
-  `lastActivityDays`); one compares text (`country`).
+  `lastActivityDays`) and accept `gt`, `lt` or `eq`.
+- `country` compares text and accepts `eq` only: there is no meaningful ordering
+  of country names, so the contract, the builder and the API all reject anything
+  else with a `validation_failed` problem.
 
 ## In the app
 

@@ -78,10 +78,12 @@ place that cannot explain it.
 ## Why the model runs server-side
 
 The browser cannot hold a provider key, and a prompt is business logic that
-belongs under version control. The API owns a `LlmPort` with two implementations:
-the Anthropic adapter and a deterministic local generator selected when no key is
-configured. Both satisfy the same contract, so tests and development are offline
-and repeatable while production gets the model.
+belongs under version control. The API owns a model port with three
+implementations: the Anthropic adapter, the OpenCode Zen adapter, and a
+deterministic local generator. One decision made at boot binds either port, so
+tests and development are offline and repeatable while production gets a hosted
+model. Which adapter is bound comes from configuration alone — adding a key is the
+only step needed to change models.
 
 See [the generative pipeline](generative-pipeline.md).
 

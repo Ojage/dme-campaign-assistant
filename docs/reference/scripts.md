@@ -33,10 +33,28 @@ Run from the repository root.
 Each package is a workspace, so its own scripts work too:
 
 ```bash
-pnpm --filter @dme/contracts test      # specification invariants
+pnpm --filter @dme/contracts test       # specification invariants (node:test)
+pnpm --filter @dme/api test             # domain and HTTP unit tests (jest)
 pnpm --filter @dme/api build:seed       # compile the seed script only
 pnpm --filter @dme/web build            # production web build
 ```
+
+## How the tests are run
+
+The API compiles to CommonJS, so its tests run on Jest. TypeScript 7 is a native
+compiler and does not expose the JavaScript compiler API that `ts-jest` needs, so
+`babel.config.cjs` transforms test files and `pnpm typecheck` does the type
+checking — the two responsibilities are separate, and types are checked over test
+files too because `tsconfig.json` includes `src/**/*.ts`.
+
+Contracts are ESM and use the built-in test runner instead:
+
+```bash
+pnpm --filter @dme/contracts test
+```
+
+It imports from `dist/`, so build first — `pnpm build` or
+`pnpm --filter @dme/contracts build`.
 
 ## What CI should run
 

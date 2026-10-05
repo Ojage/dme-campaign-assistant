@@ -6,11 +6,15 @@ import { CampaignForm } from '@/features/campaigns/components/CampaignForm'
 import { CampaignResult } from '@/features/campaigns/components/CampaignResult'
 import { RecentCampaigns } from '@/features/campaigns/components/RecentCampaigns'
 import { useCampaignForm } from '@/features/campaigns/hooks/useCampaignForm'
+import { useAssistantActivity } from '@/app/providers/AssistantActivityProvider'
 
 // Composition only — all logic lives in the feature hook.
 export default function CampaignsPage() {
   const { t } = useTranslation('campaigns')
   const form = useCampaignForm()
+
+  // Generating is the long wait on this screen, so it holds the page-wide bar.
+  useAssistantActivity('campaign-generate', form.isGenerating)
 
   return (
     <PageWrapper>

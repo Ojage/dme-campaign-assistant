@@ -3,6 +3,7 @@ import {
   type Api,
   type BodyOf,
   type CallOptions,
+  type HttpMethod,
   type OperationName,
   type ResultOf,
   type StreamBodyOf,
@@ -148,6 +149,7 @@ export class HttpClient {
       options.params,
       asRecord(options.query),
       options.body as BodyOf<TName> | undefined,
+      options.signal,
     )
 
     const response = spec.auth ? await this.#sendAuthorized(request) : await this.#fetch(request)
@@ -170,7 +172,13 @@ export class HttpClient {
     options: StreamOptions<TName> = {},
   ): AsyncGenerator<StreamEventOf<TName>, void, undefined> {
     const spec: StreamingApi[TName] = streamingOperations[name]
-    const request = this.#buildRequest(spec, options.params, undefined, options.body as StreamBodyOf<TName> | undefined)
+    const request = this.#buildRequest(
+      spec,
+      options.params,
+      undefined,
+      options.body as StreamBodyOf<TName> | undefined,
+      options.signal,
+    )
     const response = spec.auth ? await this.#sendAuthorized(request) : await this.#fetch(request)
 
     if (!response.ok || response.body === null) {
@@ -192,17 +200,19 @@ export class HttpClient {
   }
 
   #buildRequest(
-    spec: { readonly path: string; readonly body?: z.ZodTypeAny },
+    spec: { readonly method: HttpMethod; readonly path: string; readonly body?: z.ZodTypeAny },
     params: Readonly<Record<string, string>> | undefined,
     query: Readonly<Record<string, unknown>> | undefined,
     body: unknown,
+    signal: AbortSignal | undefined,
   ): Request {
     const headers: Record<string, string> = { accept: 'application/json, text/event-stream' }
     if (spec.body !== undefined && body !== undefined) headers['content-type'] = 'application/json'
 
     return new Request(`${this.#baseUrl}${versionedPath(buildPath(spec.path, params))}${buildQuery(query)}`, {
-      method: 'GET',
+      method: spec.method,
       headers,
+      ...(signal !== undefined ? { signal } : {}),
       ...(spec.body !== undefined && body !== undefined ? { body: JSON.stringify(body) } : {}),
     })
   }
@@ -236,7 +246,7 @@ export class HttpClient {
     const attempt = (async (): Promise<string | null> => {
       try {
         const response = await this.#fetch(
-          new Request(`${this.#baseUrl}${operations['auth.refresh'].path}`, {
+          new Request(`${this.#baseUrl}${versionedPath(operations['auth.refresh'].path)}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json', accept: 'application/json' },
             body: JSON.stringify({ refreshToken }),

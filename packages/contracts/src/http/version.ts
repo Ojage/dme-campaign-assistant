@@ -29,7 +29,49 @@ export const DEPRECATION_HEADER = 'deprecation'
 /** RFC 8594 sunset date, published once a deprecated version has a removal date. */
 export const SUNSET_HEADER = 'sunset'
 
+/**
+ * The slice of the operation registry this module needs. Declared structurally so
+ * the helpers can be exercised with a synthetic registry in tests.
+ */
+export interface OperationLike {
+  readonly method: string
+  readonly path: string
+  readonly deprecated?: boolean
+  readonly sunset?: string
+}
+
 /** Prefixes an operation path with the current version segment. */
 export function versionedPath(path: string): string {
   return `${API_VERSION_PREFIX}${path.startsWith('/') ? path : `/${path}`}`
+}
+/**
+ * Finds the operation that serves a method/path pair, or undefined when the
+ * route is not part of the documented API.
+ *
+ * Paths use the same `:param` shape as Express (`/segments/:id`), so a route can
+ * be matched against the registry without normalising either side.
+ */
+export function findOperation(
+  registry: Readonly<Record<string, OperationLike>>,
+  method: string,
+  path: string,
+): OperationLike | undefined {
+  const wanted = method.toUpperCase()
+  const match = Object.values(registry).find(
+    (operation) => operation.method === wanted && operation.path === path,
+  )
+  return match
+}
+
+/**
+ * The deprecation headers an operation's response must carry, per RFC 8594.
+ *
+ * Returns nothing for a live operation, so callers can spread the result
+ * unconditionally without emitting empty headers.
+ */
+export function deprecationHeaders(operation: OperationLike | undefined): Readonly<Record<string, string>> {
+  if (operation === undefined || operation.deprecated !== true) return {}
+  const headers: Record<string, string> = { [DEPRECATION_HEADER]: 'true' }
+  if (operation.sunset !== undefined) headers[SUNSET_HEADER] = operation.sunset
+  return headers
 }

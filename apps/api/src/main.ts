@@ -7,6 +7,7 @@ import { API_VERSION, API_VERSION_HEADER } from '@dme/contracts/http'
 import { AppModule } from './app.module'
 import { ENV } from './config/env'
 import type { AppConfig } from './config/env'
+import { describeLlmMode } from './shared/infrastructure/llm/llm-selection'
 
 /**
  * HTTP entry point. Composition happens here and nowhere else: every module is
@@ -46,9 +47,7 @@ async function bootstrap(): Promise<void> {
 
   logger.log(`API listening on http://localhost:${config.port}/${config.apiPrefix}/${API_VERSION}`)
   logger.log(`Reference: http://localhost:${config.port}/${config.apiPrefix}/docs`)
-  if (!config.anthropic.enabled) {
-    logger.warn('ANTHROPIC_API_KEY is not set — the local scripted generator will be used instead.')
-  }
+  logger.log(`Content model: ${describeLlmMode(config)}`)
 }
 
 void bootstrap().catch((error: unknown) => {

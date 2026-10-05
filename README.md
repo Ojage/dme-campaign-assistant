@@ -1,72 +1,96 @@
-# Campaign Assistant — DME
+# Campaign Assistant
 
-Internal marketing workspace for DME. This repository is a pnpm monorepo: the React
-front end lives in `apps/web`, and `apps/api` reserves the slot for the backend.
+An internal marketing workspace for DME: segment a customer base, draft a campaign
+with a language model, review it, and ask questions about the data in a chat.
+
+The interesting part is not the screens. It is that the browser and the API agree
+on every request and response because both import **one** contract package, and that
+the published API reference is generated from that same contract — so it cannot
+describe an endpoint that does not exist.
+
+```
+apps/web                React 19 · Vite · Zustand · TanStack Query
+apps/api                NestJS · TypeORM · PostgreSQL · Anthropic / OpenCode
+packages/contracts      zod schemas · typed client · OpenAPI generator
+```
+
+## Quick start
+
+```bash
+cp apps/api/.env.example apps/api/.env
+pnpm install
+pnpm db:up          # PostgreSQL in Docker
+pnpm seed            # two accounts, 280 customers, two segments
+pnpm dev             # API on :4000, web app on :5173
+```
+
+Sign in with `aicha.njoya@dme.cm` / `campaigns`.
+
+Then follow **[Your first campaign](docs/tutorials/first-campaign.md)** — about ten
+minutes from a cold start to a drafted campaign.
+
+The API reference is at <http://localhost:4000/api/docs>.
+
+## Documentation
+
+Documentation is organised by
+[Diátaxis](https://diataxis.fr), because the four kinds of document answer different
+questions and only work when kept apart. Start at **[docs/README.md](docs/README.md)**.
+
+| | |
+| --- | --- |
+| [Tutorial](docs/tutorials/first-campaign.md) | From nothing to a drafted campaign. Learning-oriented. |
+| [How-to](docs/how-to/) | Add a customer, build a segment, generate a campaign, add an endpoint. |
+| [Reference](docs/reference/api.md) | [API](docs/reference/api.md) · [configuration](docs/reference/configuration.md) · [scripts](docs/reference/scripts.md) · [errors](docs/reference/errors.md) |
+| [Explanation](docs/explanation/architecture.md) | [Architecture](docs/explanation/architecture.md) · [contracts](docs/explanation/contracts.md) · [versioning](docs/explanation/api-versioning.md) · [auth](docs/explanation/authentication.md) · [state](docs/explanation/state.md) · [generation](docs/explanation/generative-pipeline.md) |
+
+## The API
+
+Versioned in the path, documented by generation:
+
+- `/api/v1/...` — every endpoint. An unversioned path is a 404, not a fallback.
+- `/api/openapi.json` — the OpenAPI 3.1 description.
+- `/api/docs` — Swagger UI over that description, served from the installed
+  package rather than a CDN.
+- `x-api-version` on every response.
+
+The specification is generated from the operation registry in
+`packages/contracts/src/http/api.ts` by `buildOpenApiDocument()`. Adding a
+registry entry gives you a typed client method, the request and response types, and
+the documented endpoint at once. `packages/contracts/test/openapi.test.mjs` asserts
+the document and the registry still agree.
+
+Regenerate the committed snapshot with `pnpm openapi:write`.
+
+## Development
+
+```bash
+pnpm typecheck        # contracts, API and web app
+pnpm test             # every suite
+pnpm build            # all three packages
+pnpm openapi:write    # refresh docs/reference/openapi.json
+```
+
+Conventions the codebase holds to:
+
+- **No `any`.** The boundary is already typed and runtime-checked, so the
+  application code has no excuse for casting.
+- **The contract is the contract.** No hand-written response interfaces; the
+  registry entry is the type.
+- **Framework types stop at the controller.** Use cases depend on ports, not on
+  TypeORM.
+- **Comments explain why.** What the code does is legible; why it is shaped that
+  way is not.
+
+## Without a model key
+
+`ANTHROPIC_API_KEY` and `OPENCODE_API_KEY` are both optional, and neither is
+required: with no key the API uses a deterministic local generator that implements
+the same port, so the whole application — including streaming chat — works offline
+and in tests. The provider and model actually in use are logged at boot; set
+`MODEL_PROVIDER` to pin one explicitly. See
+[run without a model key](docs/how-to/run-without-a-model-key.md).
 
 ## Requirements
 
-- Node.js >= 20.19 (developed on 24.19)
-- pnpm >= 9 (developed on 9.12) — `corepack enable` if needed
-
-## Install
-
-```bash
-pnpm install
-```
-
-## Commands
-
-| Command | What it does |
-| --- | --- |
-| `pnpm dev` | Start the web app with hot reload (http://localhost:5173) |
-| `pnpm dev:web` | Same as `pnpm dev` |
-| `pnpm dev:api` | Start the API placeholder |
-| `pnpm build` | Typecheck and produce the production bundle in `apps/web/dist` |
-| `pnpm preview` | Serve the production bundle locally |
-| `pnpm typecheck` | Run TypeScript across every workspace package |
-| `pnpm clean` | Remove build output and caches |
-
-The first `pnpm dev` of the session may print `http://localhost:5174` instead if
-5173 is already in use.
-
-## Sign in
-
-Authentication is mocked in the browser, so any backend work is isolated behind a
-single module. Two seeded accounts share the password `campaigns`:
-
-- `aicha.njoya@dme.cm` — Marketing lead
-- `serge.etoa@dme.cm` — Lifecycle marketer
-
-The session is persisted in `localStorage` under `campaign-assistant:session`.
-Protected routes redirect to `/login` and return you to the page you originally
-requested after a successful sign-in.
-
-## Where things live
-
-```
-apps/web/src
-├── app/            Bootstrap, router, route guards, providers
-├── components/     Layout (AppLayout, Sidebar, TopBar) and shared UI
-├── data/mock/      Mock data layer — the swap point for the real API
-├── features/       Feature slices (auth, customers, segments, campaigns)
-├── hooks/          Cross-cutting hooks (theme, language)
-├── i18n/           Locale resources, one namespace per feature
-├── lib/            Framework-agnostic helpers
-├── pages/          Route-level components
-└── styles/         Tailwind layers, tokens, scrollbar styling
-```
-
-Conventions worth keeping:
-
-- Route paths come from `RoutePath`; never hardcode a path string.
-- Feature-specific UI lives under `features/<feature>/`, not in `components/`.
-- Every user-facing string goes through i18n — add a namespace file per language.
-- Backend calls go through the feature's `api/` module, which reads from
-  `data/mock/` until the API lands.
-
-## Swapping the mock for the real API
-
-`src/features/auth/api/authApi.ts` is the only module that knows the session is
-fake. It already reports failures as typed codes (`invalidCredentials`,
-`userNotFound`, `userInactive`, `networkTimeout`), so replacing the mock bodies
-with `fetch` calls needs no changes in the UI layer.
+Node ≥ 20.19, pnpm ≥ 9, Docker (for PostgreSQL).

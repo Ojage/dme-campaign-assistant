@@ -1,6 +1,5 @@
 import * as z from 'zod/v4'
 import { idSchema, isoDateTimeSchema } from '../shared.js'
-import { createSegmentConditionSchema } from '../segments/contracts.js'
 
 export const campaignChannelSchema = z.enum(['sms', 'email', 'push'])
 export type CampaignChannel = z.infer<typeof campaignChannelSchema>
@@ -36,16 +35,6 @@ export const generateCampaignRequestSchema = z.object({
   includeDiscount: z.boolean().default(false),
 })
 export type GenerateCampaignRequest = z.infer<typeof generateCampaignRequestSchema>
-
-export const generateCampaignFromConditionsRequestSchema = z.object({
-  objective: z.string().trim().min(10).max(600),
-  conditions: z.array(createSegmentConditionSchema).min(1).max(10),
-  channel: campaignChannelSchema,
-  tone: campaignToneSchema,
-  language: z.enum(['en', 'fr']).default('en'),
-  includeDiscount: z.boolean().default(false),
-})
-export type GenerateCampaignFromConditionsRequest = z.infer<typeof generateCampaignFromConditionsRequestSchema>
 
 export const updateCampaignStatusRequestSchema = z.object({
   status: campaignStatusSchema,

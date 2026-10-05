@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import '@/app/bootstrap'
 import App from '@/app/App'
 import { QueryProvider } from '@/app/providers/QueryProvider'
+import { AssistantActivityProvider } from '@/app/providers/AssistantActivityProvider'
 import '@/styles/index.css'
 
 const container = document.getElementById('root')
@@ -16,7 +17,9 @@ createRoot(container).render(
   <StrictMode>
     <BrowserRouter>
       <QueryProvider>
-        <App />
+        <AssistantActivityProvider>
+          <App />
+        </AssistantActivityProvider>
       </QueryProvider>
     </BrowserRouter>
   </StrictMode>,

@@ -8,6 +8,7 @@ import { SearchConsole } from '@/components/layout/SearchConsole'
 import { AgentDrawer } from '@/components/layout/AgentDrawer'
 import { ScrollArea } from '@/components/common/ScrollArea'
 import { WorldMapWatermark } from '@/components/common/WorldMapWatermark'
+import { AssistantActivityBar } from '@/components/common/AssistantActivityBar'
 
 /**
  * Two-layer stack:
@@ -36,6 +37,10 @@ export function AppLayout() {
             <ScrollArea className="h-full" contentClassName="relative" label="Page content">
               <Outlet />
             </ScrollArea>
+
+            {/* Spans the content area and sits above the drawer (z-50 > z-40) so a
+                reply generated inside the chat still lights the whole page. */}
+            <AssistantActivityBar />
           </main>
 
           <AnimatePresence>

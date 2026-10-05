@@ -34,11 +34,8 @@ export default {
     placeholder: 'Ask the assistant anything…',
     send: 'Send',
     thinking: 'Thinking…',
-    replies: [
-      'Your active share is strongest in Cameroon — a weekend SMS push to the high-spender segment would land well.',
-      'I can draft that. Try the Campaigns page: pick the dormant VIPs segment with a friendly tone and I’ll shape the copy.',
-      'Churn risk clusters among customers inactive 60+ days. A win-back email with a saved-items hook is a good first move.',
-    ],
+    newConversation: 'New conversation',
+    unreachable: 'The assistant could not be reached.',
   },
   status: {
     active: 'Active',
@@ -53,6 +50,9 @@ export default {
     previous: 'Previous',
     next: 'Next',
     refreshing: 'Refreshing…',
+  },
+  activity: {
+    working: 'The assistant is working',
   },
   errors: {
     generic: 'Something went wrong',

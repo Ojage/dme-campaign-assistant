@@ -57,6 +57,16 @@ const DEMO_PASSWORD = 'campaigns'
 
 const COUNTRIES = ['Cameroon', 'Cameroon', 'Cameroon', 'Senegal', 'Côte d’Ivoire', 'Nigeria', 'Gabon', 'Togo'] as const
 
+function buildConditions(conditions: readonly Condition[]): SegmentConditionOrmEntity[] {
+  return conditions.map((condition) => {
+    const child = new SegmentConditionOrmEntity()
+    child.field = condition.field
+    child.operator = condition.operator
+    child.value = condition.value
+    return child
+  })
+}
+
 /**
  * Deterministic pseudo-random so the seed produces the same audience every time
  * and segment previews are reproducible in tests.
@@ -69,7 +79,11 @@ function createRandom(seed: number): () => number {
   }
 }
 
-const STATUSES = ['active', 'active', 'active', 'inactive', 'dormant'] as const
+/**
+ * Only the three statuses the shared contract declares. A seeded row that the
+ * contract rejects would make every list response fail validation in the browser.
+ */
+const STATUSES = ['active', 'active', 'active', 'inactive', 'churned'] as const
 
 function buildCustomers(count: number) {
   const random = createRandom(20260317)
@@ -146,11 +160,12 @@ async function seed(): Promise<void> {
     console.log(`+ ${rows.length} customers`)
   }
 
-  const segments = dataSource.getRepository(SegmentOrmEntity)
-  if ((await segments.count()) === 0) {
-    // Conditions are attached to their parent so the cascade inserts them with the
-    // segment; saving them separately would leave the segment with no clauses.
-    const definitions: readonly { name: string; matchCount: number; conditions: readonly Condition[] }[] = [
+  // Definitions are declared outside the guard so an existing database can be
+  // repaired: a segment whose clauses never made it into the database violates the
+  // contract, and every list response would then fail validation in the browser.
+  // Conditions are attached to their parent so the cascade inserts them with the
+  // segment; saving them separately would leave the segment with no clauses.
+  const segmentDefinitions: readonly { name: string; matchCount: number; conditions: readonly Condition[] }[] = [
       {
         name: 'High value, recently active',
         matchCount: 46,
@@ -160,30 +175,61 @@ async function seed(): Promise<void> {
           { field: 'lastActivityDays', operator: 'lt', value: '45' },
         ],
       },
-      {
-        name: 'Dormant 90 days',
-        matchCount: 71,
-        conditions: [{ field: 'lastActivityDays', operator: 'gt', value: '90' }],
-      },
-    ]
+    {
+      name: 'Dormant 90 days',
+      matchCount: 71,
+      conditions: [{ field: 'lastActivityDays', operator: 'gt', value: '90' }],
+    },
+  ]
 
-    for (const definition of definitions) {
+  const segments = dataSource.getRepository(SegmentOrmEntity)
+  let added = 0
+  let repaired = 0
+
+  for (const definition of segmentDefinitions) {
+    const existing = await segments.findOne({ where: { name: definition.name }, relations: { conditions: true } })
+    if (existing === null) {
       const segment = new SegmentOrmEntity()
       segment.name = definition.name
       segment.matchCount = definition.matchCount
-      segment.conditions = definition.conditions.map((condition) => {
-        const child = new SegmentConditionOrmEntity()
-        child.field = condition.field
-        child.operator = condition.operator
-        child.value = condition.value
-        return child
-      })
+      segment.conditions = buildConditions(definition.conditions)
       await segments.save(segment)
+      added += 1
+      continue
     }
+    if ((existing.conditions ?? []).length === 0) {
+      existing.conditions = buildConditions(definition.conditions)
+      await segments.save(existing)
+      repaired += 1
+    }
+  }
 
-    console.log(`+ ${definitions.length} segments`)
-  } else {
-    console.log('• segments already present')
+  if (added > 0) console.log(`+ ${added} segments`)
+  else console.log('• segments already present')
+  if (repaired > 0) console.log(`~ repaired ${repaired} segment(s) that had no conditions`)
+
+  // Conditions written by an older build can be rejected by the current contract,
+  // which would fail the whole list endpoint, so they are normalised too.
+  const coercedConditions = await dataSource
+    .getRepository(SegmentConditionOrmEntity)
+    .createQueryBuilder()
+    .update(SegmentConditionOrmEntity)
+    .set({ operator: 'eq' })
+    .where('field = :field AND operator <> :operator', { field: 'country', operator: 'eq' })
+    .execute()
+  if ((coercedConditions.affected ?? 0) > 0) {
+    console.log(`~ normalised ${coercedConditions.affected} country condition(s) to equality`)
+  }
+
+  // A status outside the contract enum would fail response validation everywhere.
+  const invalidStatuses = await customers
+    .createQueryBuilder()
+    .update(CustomerOrmEntity)
+    .set({ status: 'inactive' })
+    .where('status NOT IN (:...valid)', { valid: [...new Set(STATUSES)] })
+    .execute()
+  if ((invalidStatuses.affected ?? 0) > 0) {
+    console.log(`~ normalised ${invalidStatuses.affected} customer row(s) with an unknown status`)
   }
 
   await dataSource.destroy()

@@ -1,12 +1,15 @@
 # Run without a model key
 
-Goal: develop, test and demo with no `ANTHROPIC_API_KEY` set.
+Goal: develop, test and demo with no model key set at all.
 
 ## What happens
 
-The API checks for the key at boot. Without one it selects a deterministic local
-generator instead of the Anthropic adapter and logs a warning. Every endpoint
-behaves the same way; only the wording of generated content differs.
+The API resolves its provider at boot. With no `ANTHROPIC_API_KEY` and no
+`OPENCODE_API_KEY`, it selects a deterministic local generator and logs that. Every
+endpoint behaves the same way; only the wording of generated content differs.
+
+`MODEL_PROVIDER=scripted` forces this even when a key is present, which is how a
+CI run stays reproducible.
 
 ## What you get
 
@@ -24,8 +27,8 @@ ANTHROPIC_MODEL=claude-sonnet-4-5
 ANTHROPIC_MAX_TOKENS=1024
 ```
 
-Restart the API. The warning disappears and the same endpoints call the model. No
-code change, no rebuild.
+Restart the API. The boot line switches to the provider and model you configured.
+No code change, no rebuild.
 
 ## Notes
 

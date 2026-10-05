@@ -38,10 +38,13 @@ export async function previewSegment(conditions: DraftCondition[]): Promise<numb
 /**
  * Narrows a loosely-typed builder condition to the contract's discriminated union:
  * a country compares text, the other three compare numbers.
+ *
+ * The builder only offers equality for a country (see ConditionRow), and the
+ * contract requires it, so the literal is asserted rather than the wider operator.
  */
 function toContractCondition(condition: DraftCondition): CreateSegmentRequest['conditions'][number] {
   if (condition.field === SegmentConditionField.COUNTRY) {
-    return { field: 'country', operator: condition.operator, value: String(condition.value).trim() }
+    return { field: 'country', operator: 'eq', value: String(condition.value).trim() }
   }
   return {
     field: condition.field,

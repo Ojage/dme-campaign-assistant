@@ -34,11 +34,8 @@ export default {
     placeholder: 'Posez votre question à l’assistant…',
     send: 'Envoyer',
     thinking: 'Réflexion…',
-    replies: [
-      'Votre part active est la plus forte au Cameroun — une relance SMS de week-end vers le segment des gros dépensiers serait efficace.',
-      'Je peux rédiger ça. Essayez la page Campagnes : choisissez le segment des VIP dormants avec un ton amical et je façonne le message.',
-      'Le risque d’attrition se concentre chez les clients inactifs depuis plus de 60 jours. Un e-mail de reconquête est un bon premier pas.',
-    ],
+    newConversation: 'Nouvelle conversation',
+    unreachable: 'L’assistant est injoignable.',
   },
   status: {
     active: 'Actif',
@@ -53,6 +50,9 @@ export default {
     previous: 'Précédent',
     next: 'Suivant',
     refreshing: 'Actualisation…',
+  },
+  activity: {
+    working: 'L’assistant est en train de travailler',
   },
   errors: {
     generic: 'Une erreur est survenue',

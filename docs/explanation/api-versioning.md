@@ -57,9 +57,14 @@ For each superseded operation:
 
 1. Mark it `deprecated: true` in the registry. The generated specification shows it
    as deprecated, so the reference stops recommending it.
-2. Announce the removal with `Deprecation` and `Sunset` headers (RFC 8594), so a
-   client can discover the date from a normal response.
+2. Add the removal date as `sunset` (an HTTP-date). `DeprecationInterceptor` reads
+   both fields off the registry and adds `Deprecation: true` and `Sunset` to every
+   response for that operation, so a client discovers the date from a normal
+   response without reading the documentation (RFC 8594).
 3. Remove it, and only it, on that date.
+
+The header and the specification cannot disagree, because both are derived from the
+same registry entry: there is no second place to remember to update.
 
 Removing a version is a deliberate act with its own change — never a side effect
 of the next feature.

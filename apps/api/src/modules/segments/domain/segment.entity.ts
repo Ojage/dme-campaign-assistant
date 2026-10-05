@@ -20,7 +20,7 @@ export function isSegmentOperator(value: string): value is SegmentOperator {
  * importing the customers module keeps the two domains independent: the segment
  * rules depend on a read model, not on another module's entity.
  */
-export interface Audiencemember {
+export interface AudienceMember {
   readonly totalAmountSpent: number
   readonly totalTransactions: number
   readonly lastActivityDays: number
@@ -32,7 +32,7 @@ export interface SegmentCondition {
   readonly field: SegmentField
   readonly operator: SegmentOperator
   readonly value: number | string
-  matches(member: Audiencemember): boolean
+  matches(member: AudienceMember): boolean
 }
 
 /** Plain data shape of a condition, used for API responses. */
@@ -112,6 +112,12 @@ export class SegmentCondition {
 
   public static create(condition: NewSegmentCondition, id: string): SegmentCondition {
     if (condition.field === 'country') {
+      // Mirrors the contract: a country is either kept or dropped, never ordered.
+      if (condition.operator !== 'eq') {
+        throw new ValidationError('A country condition can only test equality.', {
+          conditions: ['Choose “is” for a country instead of a greater/less comparison.'],
+        })
+      }
       if (typeof condition.value !== 'string' || condition.value.trim().length === 0) {
         throw new ValidationError('A country condition needs a country name.', {
           conditions: ['A country condition needs a country name.'],
@@ -129,7 +135,7 @@ export class SegmentCondition {
   }
 
   /** Evaluates this clause against one audience member. */
-  public matches(member: Audiencemember): boolean {
+  public matches(member: AudienceMember): boolean {
     switch (this.field) {
       case 'country': {
         const left = member.country.toLowerCase()
@@ -168,7 +174,13 @@ function compare(left: number | string, right: number | string, operator: Segmen
   }
 }
 
-/** All clauses must hold — conjunction, matching how the UI presents them. */
-export function matchesAll(conditions: readonly SegmentCondition[], member: Audiencemember): boolean {
+/**
+ * All clauses must hold — conjunction, matching how the UI presents them.
+ *
+ * An empty list matches every member, which is what `every` means; it is
+ * unreachable through the API because both the request schemas and
+ * `Segment.create` refuse a segment with no conditions.
+ */
+export function matchesAll(conditions: readonly SegmentCondition[], member: AudienceMember): boolean {
   return conditions.every((condition) => condition.matches(member))
 }

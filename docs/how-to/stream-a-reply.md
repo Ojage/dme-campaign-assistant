@@ -10,17 +10,20 @@ the contract and throws on a frame it does not recognise:
 ```ts
 import { apiClient } from '@/lib/api/apiClient'
 
-const stream = await apiClient.stream('chat.messages.stream', {
+for await (const event of apiClient.stream('chat.messages.stream', {
   params: { threadId },
-  body: { content: 'Why did churn rise this month?' },
-})
-
-for await (const event of stream) {
-  if (event.type === 'delta') appendToUi(event.content)
-  if (event.type === 'done') replaceWithStoredMessage(event.message)
+  body: { content: 'Why did churn rise this month?', language: 'en' },
+})) {
+  if (event.type === 'delta') appendToUi(event.text)
+  if (event.type === 'done') replaceWithStoredMessage(event.assistantMessage)
   if (event.type === 'error') showFailure(event.message)
 }
 ```
+
+`stream()` is an async generator, so there is nothing to await before the loop.
+The working implementation is
+`apps/web/src/features/chat/hooks/useChatThread.ts`, which the agent drawer
+(`apps/web/src/components/layout/AgentDrawer.tsx`) renders.
 
 The client handles the token, the response status and the framing; your code only
 sees validated events.
@@ -29,9 +32,9 @@ sees validated events.
 
 - `start` — the assistant message exists. Keep its id: the transcript will be
   re-rendered from stored messages after a reload.
-- `delta` — append the fragment. Do not assume it is a word.
-- `done` — replace what you appended with `event.message`. It is what the server
-  stored, so a delta that was dropped in transit cannot leave the UI lying.
+- `delta` — append `event.text`. Do not assume it is a word.
+- `done` — replace what you appended with `event.assistantMessage`. It is what the
+  server stored, so a delta that was dropped in transit cannot leave the UI lying.
 - `error` — generation failed; discard the partial text.
 
 ## Stopping early
@@ -41,7 +44,11 @@ can cancel the stream:
 
 ```ts
 const controller = new AbortController()
-const stream = apiClient.stream('chat.messages.stream', { params: { threadId }, body, signal: controller.signal })
+const stream = apiClient.stream('chat.messages.stream', {
+  params: { threadId },
+  body,
+  signal: controller.signal,
+})
 controller.abort()
 ```
 

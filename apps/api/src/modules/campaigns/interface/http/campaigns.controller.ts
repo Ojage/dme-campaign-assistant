@@ -1,7 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common'
 import * as z from 'zod/v4'
 import {
-  generateCampaignFromConditionsRequestSchema,
   generateCampaignRequestSchema,
   updateCampaignStatusRequestSchema,
 } from '@dme/contracts'
@@ -36,7 +35,6 @@ function toResponse(campaign: Campaign) {
 type CampaignResponse = ReturnType<typeof toResponse>
 
 type GenerateBody = z.infer<typeof generateCampaignRequestSchema>
-type GenerateFromConditionsBody = z.infer<typeof generateCampaignFromConditionsRequestSchema>
 
 @Controller('campaigns')
 export class CampaignsController {
@@ -52,20 +50,14 @@ export class CampaignsController {
     return (await this.listCampaigns.execute()).map(toResponse)
   }
 
-  /** Generation from an already-saved segment. */
+  /**
+   * Generation always targets a saved segment: one audience definition, referenced
+   * by campaigns, rather than a second way to express the same conditions.
+   */
   @Post('generate')
   @HttpCode(HttpStatus.CREATED)
   public async generate(@Body(zodBody(generateCampaignRequestSchema)) body: GenerateBody) {
-    return toResponse(await this.generateCampaign.execute(toInput(body, { segmentId: body.segmentId })))
-  }
-
-  /** Generation from ad-hoc conditions; the API saves them as a segment first. */
-  @Post('generate-from-conditions')
-  @HttpCode(HttpStatus.CREATED)
-  public async generateFromConditions(
-    @Body(zodBody(generateCampaignFromConditionsRequestSchema)) body: GenerateFromConditionsBody,
-  ) {
-    return toResponse(await this.generateCampaign.execute(toInput(body, { conditions: body.conditions })))
+    return toResponse(await this.generateCampaign.execute(toInput(body)))
   }
 
   @Patch(':id/status')
@@ -83,17 +75,14 @@ export class CampaignsController {
   }
 }
 
-/** Narrows the two request shapes to the one shape the use case accepts. */
-function toInput(
-  body: GenerateBody | GenerateFromConditionsBody,
-  target: { segmentId?: string; conditions?: GenerateFromConditionsBody['conditions'] },
-): GenerateCampaignInput {
+/** Maps the request body onto the use case input. */
+function toInput(body: GenerateBody): GenerateCampaignInput {
   return {
     objective: body.objective,
     channel: body.channel,
     tone: body.tone,
     language: body.language,
     includeDiscount: body.includeDiscount,
-    ...target,
+    segmentId: body.segmentId,
   }
 }

@@ -15,6 +15,10 @@ export type SegmentOperator = z.infer<typeof segmentOperatorSchema>
 /**
  * `country` compares strings, the other fields compare numbers. The schema is a
  * discriminated union so an invalid pairing cannot be constructed.
+ *
+ * Ordering text is not offered: `gt`/`lt` on a country name has no meaningful
+ * audience meaning, so the contract only permits equality there — the same rule
+ * the segment builder applies in the browser.
  */
 const numericFieldSchema = z.enum(['totalAmountSpent', 'totalTransactions', 'lastActivityDays'])
 
@@ -26,7 +30,7 @@ const numericConditionSchema = z.object({
 
 const countryConditionSchema = z.object({
   field: z.literal('country'),
-  operator: segmentOperatorSchema,
+  operator: z.literal('eq'),
   value: z.string().min(1),
 })
 

@@ -47,17 +47,33 @@ While both are supported, publish two documents so each describes one version.
 'customers.list': {
   // ...
   deprecated: true,
-  description: 'Superseded by customers.search. Removed after 2026-12-31.',
+  sunset: 'Thu, 31 Dec 2026 00:00:00 GMT',
+  description: 'Superseded by customers.search.',
 }
 ```
 
-The generated document carries `deprecated: true`, so the reference shows it, and
-`Deprecation`/`Sunset` headers are emitted for it.
+`sunset` must be an HTTP-date, which is what the `Sunset` header takes. The
+generated document carries `deprecated: true`, and every response for the
+operation now carries `Deprecation: true` and `Sunset: Thu, 31 Dec 2026 00:00:00
+GMT`.
 
 ### 3. Publish the sunset date
 
 The old version keeps answering until its sunset date, then is removed along with
 its schemas. Removing it is a deliberate act, not a side effect of the next change.
+
+### 4. Check both artefacts agree
+
+```bash
+pnpm openapi:write && git diff docs/reference/openapi.json
+```
+
+The generated document must show the operation as deprecated, and a request must
+come back with the headers:
+
+```bash
+curl -sI http://localhost:4000/api/v1/customers | grep -iE 'deprecation|sunset'
+```
 
 ## Notes
 

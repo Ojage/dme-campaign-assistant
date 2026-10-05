@@ -10,9 +10,13 @@ invalid value rather than failing later inside an adapter.
 | --- | --- | --- |
 | `PORT` | `4000` | TCP port, 1–65535. |
 | `API_PREFIX` | `api` | First path segment. Exists so the API can share an origin with the static web app. |
-| `API_VERSION` | — | Taken from the contract package (`v1`). Set explicitly only when running a deployment that speaks a different version. |
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed origins. Credentials are enabled, so `*` is not accepted. |
 | `NODE_ENV` | `development` | `development`, `test` or `production`. |
+
+The API version is not an environment variable: `API_VERSION` in
+`packages/contracts/src/http/version.ts` is the single constant that versions the
+URL prefix, the client, the response header and the generated specification. It
+changes when the API version changes, in one place.
 
 ## Database
 
@@ -42,9 +46,22 @@ most once. See [sessions](../explanation/authentication.md).
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | empty | When empty, the deterministic local generator is used and a warning is logged. |
+| `MODEL_PROVIDER` | `auto` | `auto`, `anthropic`, `opencode` or `scripted`. `auto` takes the first provider whose key is set, in that order. |
+| `ANTHROPIC_API_KEY` | empty | Key for Anthropic. Empty rules the provider out. |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Model identifier for generation. |
 | `ANTHROPIC_MAX_TOKENS` | `1024` | Upper bound on a single generation. |
+| `OPENCODE_API_KEY` | empty | Key for OpenCode Zen. Empty rules the provider out. |
+| `OPENCODE_BASE_URL` | `https://opencode.ai/zen/v1` | Gateway root; `/chat/completions` is appended. Point it at any OpenAI-compatible gateway. |
+| `OPENCODE_MODEL` | `glm-5.2` | Model identifier. Only the `/chat/completions` family is supported. |
+| `OPENCODE_MAX_TOKENS` | `1024` | Upper bound on a single generation. |
+
+With no key at all, the deterministic local generator answers, and the boot log
+says so. Asking for a provider whose key is missing resolves to the generator and
+logs the mismatch rather than binding an adapter that would fail on every call:
+
+```
+Content model: scripted local model — MODEL_PROVIDER=anthropic was requested but ANTHROPIC_API_KEY is not set
+```
 
 ## Web app
 

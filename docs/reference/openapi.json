@@ -1259,11 +1259,7 @@
                                 },
                                 "operator": {
                                   "type": "string",
-                                  "enum": [
-                                    "gt",
-                                    "lt",
-                                    "eq"
-                                  ]
+                                  "const": "eq"
                                 },
                                 "value": {
                                   "type": "string",
@@ -1398,11 +1394,7 @@
                             },
                             "operator": {
                               "type": "string",
-                              "enum": [
-                                "gt",
-                                "lt",
-                                "eq"
-                              ]
+                              "const": "eq"
                             },
                             "value": {
                               "type": "string",
@@ -1497,11 +1489,7 @@
                               },
                               "operator": {
                                 "type": "string",
-                                "enum": [
-                                  "gt",
-                                  "lt",
-                                  "eq"
-                                ]
+                                "const": "eq"
                               },
                               "value": {
                                 "type": "string",
@@ -1716,11 +1704,7 @@
                             },
                             "operator": {
                               "type": "string",
-                              "enum": [
-                                "gt",
-                                "lt",
-                                "eq"
-                              ]
+                              "const": "eq"
                             },
                             "value": {
                               "type": "string",

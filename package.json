@@ -2,7 +2,7 @@
   "name": "dme-campaigns-ojage-fe",
   "version": "0.1.0",
   "private": true,
-  "description": "Campaign Assistant — internal marketing workspace for DME.",
+  "description": "Campaign Assistant \u2014 internal marketing workspace for DME.",
   "type": "module",
   "packageManager": "pnpm@9.12.0",
   "engines": {
@@ -10,12 +10,22 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "dev": "pnpm --filter @dme/web dev",
+    "dev": "run-p dev:api dev:web",
     "dev:web": "pnpm --filter @dme/web dev",
     "dev:api": "pnpm --filter @dme/api dev",
-    "build": "pnpm --filter @dme/web build",
+    "build": "pnpm -r --if-present build",
     "preview": "pnpm --filter @dme/web preview",
+    "start": "pnpm --filter @dme/api start",
     "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "openapi:write": "pnpm --filter @dme/contracts openapi",
+    "seed": "pnpm --filter @dme/api seed",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d postgres && pnpm seed",
     "clean": "pnpm -r --if-present clean"
+  },
+  "devDependencies": {
+    "npm-run-all2": "8.0.4"
   }
 }

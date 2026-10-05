@@ -31,12 +31,22 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-5'),
   ANTHROPIC_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
+
+  // `auto` prefers Anthropic, then OpenCode Zen, then the offline generator.
+  MODEL_PROVIDER: z.enum(['auto', 'anthropic', 'opencode', 'scripted']).default('auto'),
+  OPENCODE_API_KEY: z.string().default(''),
+  OPENCODE_BASE_URL: z.string().default('https://opencode.ai/zen/v1'),
+  OPENCODE_MODEL: z.string().default('glm-5.2'),
+  OPENCODE_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
 })
 
 export type Env = z.infer<typeof envSchema>
 
 /** Injection token for the validated configuration. */
 export const ENV = Symbol('ENV')
+
+/** A provider that is actually bound to the ports, i.e. `auto` already resolved. */
+export type ResolvedModelProvider = Exclude<Env['MODEL_PROVIDER'], 'auto'>
 
 /** Narrowed, camel-cased view consumed by adapters and use cases. */
 export interface AppConfig {
@@ -62,9 +72,42 @@ export interface AppConfig {
     readonly apiKey: string
     readonly model: string
     readonly maxTokens: number
-    /** False when no key is configured, which selects the local generator. */
+    /** False when no key is configured, which rules the provider out. */
     readonly enabled: boolean
   }
+  readonly opencode: {
+    readonly apiKey: string
+    /** Root of the gateway; the adapter appends `/chat/completions`. */
+    readonly baseUrl: string
+    readonly model: string
+    readonly maxTokens: number
+    readonly enabled: boolean
+  }
+  /** What `MODEL_PROVIDER` asked for, before `auto` was resolved. */
+  readonly requestedModelProvider: Env['MODEL_PROVIDER']
+  /** What is actually bound to the model ports. Never `auto`. */
+  readonly modelProvider: ResolvedModelProvider
+}
+
+/**
+ * Decides which adapter the ports receive.
+ *
+ * `auto` walks the providers in cost order — Anthropic, then OpenCode Zen, then
+ * the offline generator — so adding a key is the only step needed to change models.
+ * An explicit request for a provider whose key is missing resolves to `scripted`
+ * rather than binding an adapter that would throw on every call; the mismatch is
+ * reported at boot by `describeLlmMode`.
+ */
+export function resolveModelProvider(env: Env): ResolvedModelProvider {
+  if (env.MODEL_PROVIDER !== 'auto') {
+    const requested: ResolvedModelProvider = env.MODEL_PROVIDER
+    if (requested === 'anthropic' && env.ANTHROPIC_API_KEY.length === 0) return 'scripted'
+    if (requested === 'opencode' && env.OPENCODE_API_KEY.length === 0) return 'scripted'
+    return requested
+  }
+  if (env.ANTHROPIC_API_KEY.length > 0) return 'anthropic'
+  if (env.OPENCODE_API_KEY.length > 0) return 'opencode'
+  return 'scripted'
 }
 
 export function toAppConfig(env: Env): AppConfig {
@@ -95,5 +138,15 @@ export function toAppConfig(env: Env): AppConfig {
       maxTokens: env.ANTHROPIC_MAX_TOKENS,
       enabled: env.ANTHROPIC_API_KEY.length > 0,
     },
+    opencode: {
+      apiKey: env.OPENCODE_API_KEY,
+      // A trailing slash would double up when the adapter appends the path.
+      baseUrl: env.OPENCODE_BASE_URL.replace(/\/+$/, ''),
+      model: env.OPENCODE_MODEL,
+      maxTokens: env.OPENCODE_MAX_TOKENS,
+      enabled: env.OPENCODE_API_KEY.length > 0,
+    },
+    requestedModelProvider: env.MODEL_PROVIDER,
+    modelProvider: resolveModelProvider(env),
   }
 }

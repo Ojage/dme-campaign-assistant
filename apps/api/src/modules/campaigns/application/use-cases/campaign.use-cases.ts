@@ -1,4 +1,3 @@
-import type { NewSegmentCondition } from '../../../segments/domain/segment.entity'
 import { NotFoundError } from '../../../../shared/domain/domain.errors'
 import { Campaign, campaignDraftSchema } from '../../domain/campaign.entity'
 import type { CampaignChannel, CampaignLanguage, CampaignStatus, CampaignTone } from '../../domain/campaign.entity'
@@ -14,8 +13,7 @@ export interface GenerateCampaignInput {
   readonly tone: CampaignTone
   readonly language: CampaignLanguage
   readonly includeDiscount: boolean
-  readonly segmentId?: string
-  readonly conditions?: readonly NewSegmentCondition[]
+  readonly segmentId: string
 }
 
 @Injectable()
@@ -45,19 +43,11 @@ export class GenerateCampaign {
     )
   }
 
-  /** Either an existing segment or a set of conditions saved as one. */
+  /** A campaign always points at a segment that already exists. */
   async #resolveTarget(input: GenerateCampaignInput): Promise<{ id: string; name: string }> {
-    if (input.segmentId !== undefined) {
-      const name = await this.segments.resolveName(input.segmentId)
-      if (name === null) throw new NotFoundError('That segment no longer exists.')
-      return { id: input.segmentId, name }
-    }
-
-    if (input.conditions !== undefined && input.conditions.length > 0) {
-      return this.segments.persistConditions(input.conditions)
-    }
-
-    throw new NotFoundError('Choose a segment before generating a campaign.')
+    const name = await this.segments.resolveName(input.segmentId)
+    if (name === null) throw new NotFoundError('That segment no longer exists.')
+    return { id: input.segmentId, name }
   }
 }
 

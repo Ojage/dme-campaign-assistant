@@ -107,10 +107,31 @@ export default {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        /* The comet is half the rail wide and travels -100% → 200% of its own
+           width, i.e. -50% → +100% of the rail. It is therefore on-screen for the
+           whole cycle instead of flashing past; only the gradient's transparent
+           ends give it a soft entry and exit. */
+        'assistant-sweep': {
+          '0%': { transform: 'translate3d(-100%, 0, 0)', opacity: '0' },
+          '8%': { opacity: '1' },
+          '82%': { opacity: '1' },
+          '100%': { transform: 'translate3d(200%, 0, 0)', opacity: '0' },
+        },
+        'assistant-bloom': {
+          '0%, 100%': { opacity: '0.3', transform: 'scaleX(0.94)' },
+          '50%': { opacity: '0.85', transform: 'scaleX(1)' },
+        },
+        'assistant-core': {
+          '0%, 100%': { opacity: '0.45' },
+          '50%': { opacity: '1' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'assistant-sweep': 'assistant-sweep 1.7s cubic-bezier(0.45, 0, 0.25, 1) infinite',
+        'assistant-bloom': 'assistant-bloom 2.6s ease-in-out infinite',
+        'assistant-core': 'assistant-core 1.15s ease-in-out infinite',
       },
     },
   },
