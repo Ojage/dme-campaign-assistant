@@ -1,6 +1,7 @@
 import * as z from 'zod/v4'
 import { ModelProviderError } from '../../domain/domain.errors'
 import { errorName, isAbortError } from './abort'
+import { describeException } from './error-description'
 import type {
   ModelTurn,
   TextGenerationRequest,
@@ -150,6 +151,7 @@ export class OpenAiCompatibleClient implements TextModel, StructuredModel {
   }
 
   async #open(body: unknown, signal?: AbortSignal): Promise<Response> {
+    const startedAt = Date.now()
     try {
       return await fetch(this.#endpoint, {
         method: 'POST',
@@ -162,7 +164,7 @@ export class OpenAiCompatibleClient implements TextModel, StructuredModel {
         signal: this.#deadline(signal),
       })
     } catch (cause) {
-      throw this.#toDomainError(undefined, undefined, cause)
+      throw this.#toDomainError(undefined, undefined, cause, Date.now() - startedAt)
     }
   }
 
@@ -179,14 +181,34 @@ export class OpenAiCompatibleClient implements TextModel, StructuredModel {
     return caller === undefined ? timeout : AbortSignal.any([caller, timeout])
   }
 
+  /** The host of the gateway this client talks to, for log lines — never the key. */
+  #host(): string {
+    try {
+      return new URL(this.#endpoint).host
+    } catch {
+      return this.#endpoint
+    }
+  }
+
   /**
    * Provider faults become domain errors. The key is never echoed back: the log
    * keeps a truncated body, and the client-facing message carries neither.
+   *
+   * A bare `fetch` transport error (e.g. `TypeError: fetch failed`) hides the
+   * actual fault in its nullable `cause`, so the log line walks the whole cause
+   * chain — name, error code like `UND_ERR_CONNECT_TIMEOUT`, and any nested
+   * `AggregateError` — and names the gateway host it was talking to. Without
+   * that, an unreachable, misrouted or IPv6-stalled network looks like a generic
+   * failure with no repro.
    */
-  #toDomainError(status: number | undefined, body?: string, cause?: unknown): ModelProviderError {
+  #toDomainError(status: number | undefined, body?: string, cause?: unknown, elapsedMs?: number): ModelProviderError {
     if (cause instanceof ModelProviderError) return cause
     this.#log.error(
-      `${this.#label} request failed: ${body === undefined ? String(cause) : `HTTP ${String(status)} ${body.slice(0, 300)}`}`,
+      body === undefined
+        ? `${this.#label} request failed: ${describeException(cause)} (via host ${this.#host()}${
+            elapsedMs === undefined ? '' : `, ${elapsedMs}ms`
+          })`
+        : `${this.#label} request failed: HTTP ${String(status)} ${body.slice(0, 300)}`,
     )
 
     // A cancelled request is the caller's doing, not an outage, so it must not be
@@ -253,7 +275,6 @@ function toJsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
   const { $schema: _ignored, ...rest } = z.toJSONSchema(schema) as Record<string, unknown>
   return rest
 }
-
 /** Marks the stream terminator, which ends the stream even if the socket stays open. */
 const DONE = Symbol('stream-done')
 

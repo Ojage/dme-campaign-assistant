@@ -6,6 +6,7 @@ import { ENV } from '../../../config/env'
 import type { AppConfig } from '../../../config/env'
 import { ModelProviderError } from '../../domain/domain.errors'
 import { isAbortError } from './abort'
+import { describeException } from './error-description'
 import type {
   ModelTurn,
   TextGenerationRequest,
@@ -126,7 +127,7 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
   #toDomainError(cause: unknown): ModelProviderError {
     if (cause instanceof ModelProviderError) return cause
     const status = cause instanceof Anthropic.APIError ? cause.status : undefined
-    this.#logger.error(`Anthropic request failed: ${String(cause)}`)
+    this.#logger.error(`Anthropic request failed: ${describeException(cause)}`)
 
     // The SDK reports a caller cancellation as a generic connection error, so the
     // caller signal is checked first: retrying a cancelled request is pointless

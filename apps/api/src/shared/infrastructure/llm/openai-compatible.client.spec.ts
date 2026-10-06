@@ -414,3 +414,42 @@ describe('the same client for Gemini', () => {
     expect(errors[0]).toContain('Gemini request failed')
   })
 })
+
+describe('transport failures are diagnosable', () => {
+  function geminiClient(errors: string[]): OpenAiCompatibleClient {
+    const { enabled: _enabled, ...settings } = configFor({ GEMINI_API_KEY: 'sk-gem' }).gemini
+    return new OpenAiCompatibleClient({ ...settings, label: 'Gemini' }, { error: (m) => errors.push(m) })
+  }
+
+  /** The shape undici produces when Google's (unreachable) IPv6 addresses are tried first. */
+  function fetchFailedWithCause(): Error {
+    const connectTimedOut = new Error('operation timed out') as Error & { code?: string }
+    connectTimedOut.name = 'ConnectTimeoutError'
+    connectTimedOut.code = 'UND_ERR_CONNECT_TIMEOUT'
+    const transport = new TypeError('fetch failed')
+    transport.cause = new AggregateError([connectTimedOut])
+    return transport
+  }
+
+  it('unfolds the fetch cause chain instead of an opaque "fetch failed"', async () => {
+    const errors: string[] = []
+    const client = geminiClient(errors)
+    stubFetch(() => Promise.reject(fetchFailedWithCause()))
+
+    const error = await captureError(client.generate(REQUEST))
+
+    expect(error.code).toBe('llm_unavailable')
+    expect(errors[0]).toContain('Gemini request failed: TypeError: fetch failed')
+    expect(errors[0]).toContain('ConnectTimeoutError (UND_ERR_CONNECT_TIMEOUT: operation timed out)')
+    expect(errors[0]).toContain('via host generativelanguage.googleapis.com')
+  })
+
+  it('keeps the key out of the transport log line', async () => {
+    const errors: string[] = []
+    stubFetch(() => Promise.reject(fetchFailedWithCause()))
+
+    await geminiClient(errors).generate(REQUEST).catch(() => undefined)
+
+    expect(errors[0]).not.toContain('sk-gem')
+  })
+})
