@@ -1,0 +1,6 @@
+# Mintlify automatically ignores .git, .github, node_modules, README.md,
+# LICENSE, CHANGELOG and draft content by default.
+
+# Draft content not ready to publish
+drafts/
+*.draft.mdx

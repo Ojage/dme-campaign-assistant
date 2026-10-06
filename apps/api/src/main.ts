@@ -22,7 +22,7 @@ async function bootstrap(): Promise<void> {
   // Mounted under a prefix so the API can share an origin with the static web app.
   app.setGlobalPrefix(config.apiPrefix)
   // Version in the URL: visible in logs, caches and curl, and a bookmarked request
-  // cannot silently drift onto a different contract. See docs/api-versioning.md.
+  // cannot silently drift onto a different contract. See docs/explanation/api-versioning.mdx.
   //
   // `prefix: false` because API_VERSION already carries the `v`; Nest would
   // otherwise insert its own and produce `/api/vv1/...`.

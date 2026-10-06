@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 216 36" width="216" height="36" fill="none">
+  <!-- Radar mark -->
+  <rect width="36" height="36" rx="9" fill="#C0392B" />
+  <g fill="none" stroke="#E67E22" stroke-width="2.4" stroke-linecap="round">
+    <circle cx="18" cy="18" r="3.4" fill="#E67E22" stroke="none" />
+    <path d="M12.9 12.9a7.2 7.2 0 0 0 0 10.2" />
+    <path d="M23.1 12.9a7.2 7.2 0 0 1 0 10.2" />
+    <path d="M9 9a12.7 12.7 0 0 0 0 18" />
+    <path d="M27 9a12.7 12.7 0 0 1 0 18" />
+  </g>
+  <!-- Wordmark -->
+  <text x="46" y="24" font-family="Inter, ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="17" font-weight="600" fill="#1A1A2E" letter-spacing="-0.015em">Campaign Assistant</text>
+</svg>

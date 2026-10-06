@@ -1,0 +1,101 @@
+---
+title: Scripts
+description: Every command worth knowing — day to day, checks, infrastructure, deployment, and how the tests are run.
+icon: terminal
+---
+
+Run from the repository root.
+
+## Day to day
+
+| Command | Does |
+| --- | --- |
+| `pnpm install` | Installs every workspace. |
+| `pnpm seed` | Compiles the seed script and fills the database. Idempotent. |
+| `pnpm dev:api` | API with reload on change. |
+| `pnpm dev:web` | Vite dev server on 5173, proxying `/api` to the API. |
+| `pnpm dev` | Both of the above. |
+
+## Checks
+
+| Command | Does |
+| --- | --- |
+| `pnpm typecheck` | Typechecks contracts, API and web app. |
+| `pnpm build` | Builds all three in dependency order. |
+| `pnpm test` | Runs every test suite. |
+| `pnpm openapi:write` | Regenerates `docs/reference/openapi.json`. Run after any contract change. |
+| `pnpm --filter @dme/api verify:idempotency` | Boots a throwaway Nest app and checks the idempotency interceptor end to end. Builds first. |
+
+## Infrastructure
+
+| Command | Does |
+| --- | --- |
+| `docker compose up -d postgres` | Starts PostgreSQL. |
+| `docker compose down -v` | Stops it and deletes the volume — every customer is lost. |
+
+## Deployment
+
+These run on the VPS from the production checkout (see
+[deployment](/reference/deployment)); the GitHub workflow drives the first two.
+
+| Command | Does |
+| --- | --- |
+| `.github/workflows/ci.yml` | Typecheck, tests, build, Docker image build, OpenAPI freshness — on every PR and push. |
+| `.github/workflows/deploy-production.yml` | On a `main` push: pulls, writes `.env`, starts the deploy detached, polls, verifies the deployed HEAD contains the pushed commit. |
+| `scripts/ci-deploy.sh` | The remote deploy: env merge, change detection, image builds, Postgres, schema+seed, health wait, marker. |
+| `scripts/start-deploy.sh` | Starts `ci-deploy.sh` with `nohup` so a dropped SSH connection cannot kill it. |
+| `scripts/deploy-status.sh` | Prints the deploy log and its exit code for the workflow's poll loop. |
+| `scripts/change-detect.mjs` | Maps the changed file set to the images that need a rebuild (`API` / `WEB` / `SCHEMA` / `ALL`). Pure and unit-tested. |
+
+## Per package
+
+Each package is a workspace, so its own scripts work too:
+
+```bash
+pnpm --filter @dme/contracts test       # specification invariants (node:test)
+pnpm --filter @dme/api test             # domain and HTTP unit tests (jest)
+pnpm --filter @dme/api build:seed       # compile the seed script only
+pnpm --filter @dme/web build            # production web build
+```
+
+## How the tests are run
+
+The API compiles to CommonJS, so its tests run on Jest. TypeScript 7 is a native
+compiler and does not expose the JavaScript compiler API that `ts-jest` needs, so
+`babel.config.cjs` transforms test files and `pnpm typecheck` does the type
+checking — the two responsibilities are separate, and types are checked over test
+files too because `tsconfig.json` includes `src/**/*.ts`.
+
+Contracts are ESM and use the built-in test runner instead:
+
+```bash
+pnpm --filter @dme/contracts test
+```
+
+It imports from `dist/`, so build first — `pnpm build` or
+`pnpm --filter @dme/contracts build`.
+
+### What Jest cannot reach
+
+`@nestjs/common` is ESM-only, and Jest loads it as CommonJS, so a test file that
+imports Nest cannot run. Anything that needs a DI container therefore lives
+outside Jest: the decision logic is split into a framework-free module that *is*
+unit tested, and the wiring around it is checked by booting a real app instead.
+
+`verify:idempotency` is that check for the idempotency interceptor — it mounts the
+interceptor, decorator, guard and error filter on a throwaway app, then asserts
+replay, conflict, per-caller scoping, and that a failure is left retryable.
+
+## What CI should run
+
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Then assert that `pnpm openapi:write` leaves no diff: a specification that changed
+without being committed is an unreviewed contract change. CI builds both Docker
+images too, so a lockfile drift or a Dockerfile mistake fails before it reaches
+the VPS.

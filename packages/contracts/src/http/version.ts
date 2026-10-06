@@ -11,7 +11,7 @@
  * new response fields, new endpoints. Anything that removes a field, narrows a
  * type, changes a status code or alters a default is breaking and ships as
  * `v2`, with the old version kept alive until a `Sunset` header is published
- * with it. See `docs/api-versioning.md`.
+ * with it. See `docs/explanation/api-versioning.mdx`.
  */
 
 /** The version this package speaks. Bumping it here versions the whole API. */

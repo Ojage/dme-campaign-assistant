@@ -1,0 +1,75 @@
+---
+title: Glossary
+description: The domain terms used across the product — statuses, health, segments, campaigns, errors and streaming events.
+icon: book-open
+---
+
+Short definitions of the terms used across the product, the API and these docs.
+The API endpoints named here are all documented in full in the generated
+[API reference](/reference/conventions).
+
+## Customers
+
+- **Status.** Each customer is `active`, `inactive` or `churned`. The seed ships a
+  ~60/40 split between active and inactive, with no customers born churned — a
+  customer reaches `churned` over time.
+- **KPIs** (`customers.kpis`). The dashboard aggregates: total and active counts,
+  a breakdown by status (`statusCounts`), spend by country, recovery rate, totals,
+  and the summary used by the health card.
+- **Health score.** A 0–100 summary of the customer base shown on the dashboard
+  (`customers.health`): the higher the score, the healthier the base, and the
+  level runs `healthy` (≥ 60), `attention` (40–59), `critical` (< 40).
+- **Activity trend** (`customers.activityTrend`). Customer counts bucketed per
+  month across a trailing window, feeding the dashboard trend chart.
+- **Top customers** (`customers.top`). The customers with the highest spend — the
+  dashboard's key accounts list.
+- **Import** (`customers.import`). Loads rows in one call; each row succeeds or
+  fails independently, and the result reports `imported`, `duplicates` and per-row
+  `failures`.
+
+## Segments
+
+- **Segment.** A named audience: a set of conditions, all of which must hold (AND).
+- **Condition.** One field, one operator, one value. Numeric fields accept `gt`,
+  `lt` or `eq`; `country` accepts `eq` only.
+- **Preview** (`segments.preview`). Counts the audience for conditions that may
+  not be saved yet — the segment builder shows this number as you type.
+- **Summary** (`segments.summary`). Dashboard-level aggregates over the saved
+  segments: how many segments exist, and their audience coverage.
+
+## Campaigns
+
+- **Campaign.** A generated draft for a channel (`sms`, `email`, `push`) addressed
+  to a segment's audience, carrying title, message and call to action.
+- **Status.** A campaign moves `draft → ready → sent`, and `ready` may return to
+  `draft` for another pass. Every other move is refused with `conflict`.
+- **Generation** (`campaigns.generate`). The model drafts from the objective,
+  segment name, channel and tone. It accepts an `Idempotency-Key` so a retried
+  request cannot create a second campaign.
+
+## Chat
+
+- **Thread.** The container for a conversation; messages live inside it and the
+  first message sets its title.
+- **Stream events.** `chat.messages.stream` writes SSE frames of four types:
+  `start`, `delta` (repeatable), then a terminal `done` or `error`. `done` carries
+  the stored message so a client that appended deltas can go consistent with the
+  database.
+
+## Errors and transport
+
+- **Problem document** ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)). Every
+  failure, with a stable `code` to match on, human `detail`, per-field `errors`,
+  and a `traceId` shared with the server log.
+- **Idempotency key.** A caller-chosen key for `campaigns.generate`; the first
+  response is replayed for repeating requests and refused (`conflict`) for a
+  different body. Failure responses are never recorded, so a key stays retryable.
+- **Version headers.** `x-api-version` on every response; `Deprecation: true` and
+  `Sunset` on responses for a deprecated operation.
+
+## Sessions
+
+- **Access token.** A 15-minute JWT sent as `Authorization: Bearer` on every
+  request.
+- **Refresh token.** An opaque, stored, single-use token that mints a new pair;
+  a leaked one is usable at most once.

@@ -34,7 +34,7 @@ const config: AppConfig = toAppConfig(envSchema.parse(process.env))
  * before it writes rows, which is a destructive-capable operation on a live
  * database. In development that is the desired default; in production it must
  * be asked for, so a deploy only mutates the schema when the pipeline has
- * explicitly authorised it (see docs/reference/deployment.md).
+ * explicitly authorised it (see docs/reference/deployment.mdx).
  */
 if (config.env === 'production' && process.env.ALLOW_SCHEMA_PUSH !== 'true') {
   console.error('Refusing to push schema in production. Set ALLOW_SCHEMA_PUSH=true to authorise it.')

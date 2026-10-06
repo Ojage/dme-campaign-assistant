@@ -71,7 +71,7 @@ describe('change-detect', () => {
   it('rebuilds nothing for docs, CI, scripts, infra or data paths', () => {
     assert.deepEqual(
       classify([
-        'docs/reference/deployment.md',
+        'docs/reference/deployment.mdx',
         '.github/workflows/deploy-production.yml',
         'scripts/ci-deploy.sh',
         'infra/compose.prod.yml',
@@ -106,7 +106,7 @@ describe('change-detect', () => {
 
   it('combines api and web changes in one plan', () => {
     assert.deepEqual(
-      classify(['apps/api/src/main.ts', 'apps/web/src/main.tsx', 'docs/reference/configuration.md']),
+      classify(['apps/api/src/main.ts', 'apps/web/src/main.tsx', 'docs/reference/configuration.mdx']),
       { API: true, WEB: true, SCHEMA: true, ALL: false },
     )
   })

@@ -1,0 +1,51 @@
+---
+title: Run without a model key
+description: Develop, test and demo with no model key set at all — using the deterministic local generator.
+icon: key-round
+---
+
+Goal: develop, test and demo with no model key set at all.
+
+## What happens
+
+The API resolves its provider at boot. With no `OPENCODE_API_KEY`, no
+`GEMINI_API_KEY` and no `ANTHROPIC_API_KEY`, it selects a deterministic local
+generator and logs that. Every endpoint behaves the same way; only the wording of
+generated content differs.
+
+`MODEL_PROVIDER=scripted` forces this even when a key is present, which is how a
+CI run stays reproducible.
+
+## What you get
+
+- **Campaigns**: a draft assembled from your objective, channel and tone. Same
+  fields, valid schema, plausible structure, templated prose.
+- **Chat**: a reply drawn from a fixed set of answers, streamed frame by frame so
+  the streaming path is exercised identically.
+
+## Setting a key later
+
+```bash
+# apps/api/.env
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-5-5
+ANTHROPIC_MAX_TOKENS=1024
+```
+
+Restart the API. The boot line switches to the provider and model you configured.
+No code change, no rebuild.
+
+## Notes
+
+<Note>
+**Tests should not depend on the real model.** Non-determinism and a network round
+trip make tests slow and flaky; the local generator is what keeps the suite
+offline. See [architecture](/explanation/architecture).
+</Note>
+
+<Note>
+**The fallback is not a mock.** It implements the same port as the real adapter,
+so use cases, controllers and the browser see identical responses — a test that
+passes offline exercises the production path. See
+[the generative pipeline](/explanation/generative-pipeline).
+</Note>

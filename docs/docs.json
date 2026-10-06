@@ -1,0 +1,171 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Campaign Assistant",
+  "description": "Customer analytics, audience segments and AI-drafted campaigns for DME. Sign in, read the health of your customer base, define an audience, and generate a campaign — with a documented API underneath everything.",
+  "colors": {
+    "primary": "#C0392B",
+    "light": "#E67E22",
+    "dark": "#1A1A2E"
+  },
+  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "appearance": {
+    "default": "system"
+  },
+  "api": {
+    "playground": {
+      "display": "interactive",
+      "proxy": true,
+      "credentials": true
+    }
+  },
+  "metadata": {
+    "timestamp": true
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Overview",
+        "icon": "compass",
+        "pages": ["index"]
+      },
+      {
+        "tab": "Tutorials",
+        "icon": "graduation-cap",
+        "groups": [
+          {
+            "group": "Start here",
+            "pages": ["tutorials/first-campaign", "tutorials/streaming-chat"]
+          }
+        ]
+      },
+      {
+        "tab": "How-to guides",
+        "icon": "wrench",
+        "groups": [
+          {
+            "group": "Working with data",
+            "pages": [
+              "how-to/import-customers",
+              "how-to/add-a-customer",
+              "how-to/build-a-segment"
+            ]
+          },
+          {
+            "group": "Campaigns and chat",
+            "pages": [
+              "how-to/generate-a-campaign",
+              "how-to/stream-a-reply"
+            ]
+          },
+          {
+            "group": "Running the stack",
+            "pages": [
+              "how-to/run-without-a-model-key",
+              "how-to/add-an-llm-provider"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": ["how-to/add-an-endpoint", "how-to/ship-a-breaking-change"]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "API",
+            "openapi": {
+              "source": "/reference/openapi.json",
+              "directory": "api-reference"
+            },
+            "pages": ["reference/conventions"]
+          },
+          {
+            "group": "Configuration",
+            "pages": ["reference/configuration"]
+          },
+          {
+            "group": "Deployment",
+            "pages": ["reference/deployment"]
+          },
+          {
+            "group": "Operations",
+            "pages": ["reference/errors", "reference/scripts"]
+          },
+          {
+            "group": "Domain",
+            "pages": ["reference/glossary"]
+          }
+        ]
+      },
+      {
+        "tab": "Explanation",
+        "icon": "lightbulb",
+        "groups": [
+          {
+            "group": "Design",
+            "pages": [
+              "explanation/architecture",
+              "explanation/contracts",
+              "explanation/api-versioning",
+              "explanation/authentication",
+              "explanation/generative-pipeline",
+              "explanation/state"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Live app",
+          "href": "https://campaign.ojage.org",
+          "icon": "arrow-up-right-from-square"
+        }
+      ]
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Live app",
+        "href": "https://campaign.ojage.org"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Open the app",
+      "href": "https://campaign.ojage.org"
+    }
+  },
+  "footer": {
+    "links": [
+      {
+        "anchor": "Live app",
+        "href": "https://campaign.ojage.org"
+      },
+      {
+        "anchor": "API health",
+        "href": "https://api.campaign.ojage.org/api/health"
+      },
+      {
+        "anchor": "Source code",
+        "href": "https://github.com/Ojage/dme-campaigns-ojage-fe"
+      }
+    ],
+    "socials": {
+      "github": "https://github.com/Ojage/dme-campaigns-ojage-fe"
+    }
+  }
+}
