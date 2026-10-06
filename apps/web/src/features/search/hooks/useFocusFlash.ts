@@ -12,18 +12,37 @@ export function useFocusFlash(): { flashId: string | null; flashClass: string | 
 
   useEffect(() => {
     if (focusId === null) return
-    const row = document.querySelector(`[data-focus-id="${focusId}"]`)
-    if (row) {
+    const findRow = () => document.querySelector(`[data-focus-id="${focusId}"]`)
+    let flashTimer: number | undefined
+    const startFlash = () => {
       setFlashId(focusId)
-      const timer = window.setTimeout(() => {
+      flashTimer = window.setTimeout(() => {
         setFlashId(null)
         clearFocus()
       }, 2600)
-      return () => window.clearTimeout(timer)
     }
-    // The record may be on a different page of the list; release so the next
-    // navigation is not meta-tagged with a dead target.
-    clearFocus()
+    if (findRow()) {
+      startFlash()
+      return () => window.clearTimeout(flashTimer)
+    }
+    // The record may still be loading (list pages fetch asynchronously), so
+    // poll briefly before releasing the dead target.
+    let tries = 0
+    const poll = window.setInterval(() => {
+      tries += 1
+      const row = findRow()
+      if (row) {
+        window.clearInterval(poll)
+        startFlash()
+      } else if (tries >= 12) {
+        window.clearInterval(poll)
+        clearFocus()
+      }
+    }, 200)
+    return () => {
+      window.clearInterval(poll)
+      window.clearTimeout(flashTimer)
+    }
   }, [focusId, clearFocus])
 
   return {
