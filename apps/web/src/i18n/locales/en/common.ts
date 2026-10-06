@@ -77,5 +77,14 @@ export default {
   },
   errors: {
     generic: 'Something went wrong',
+    boundary: {
+      title: 'Something went wrong',
+      description:
+        'This view hit an unexpected problem. Your data is safe — nothing was lost. Try again, or head back to the dashboard.',
+      backHome: 'Back to the dashboard',
+      details: 'Technical details',
+      copy: 'Copy error details',
+      copied: 'Copied',
+    },
   },
 }

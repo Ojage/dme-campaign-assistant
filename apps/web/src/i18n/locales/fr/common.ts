@@ -77,5 +77,14 @@ export default {
   },
   errors: {
     generic: 'Une erreur est survenue',
+    boundary: {
+      title: 'Une erreur est survenue',
+      description:
+        'Cette vue a rencontré un problème inattendu. Vos données sont en sécurité — rien n’a été perdu. Réessayez ou revenez au tableau de bord.',
+      backHome: 'Retour au tableau de bord',
+      details: 'Détails techniques',
+      copy: 'Copier les détails de l’erreur',
+      copied: 'Copié',
+    },
   },
 }
