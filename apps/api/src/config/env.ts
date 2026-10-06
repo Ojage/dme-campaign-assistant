@@ -48,7 +48,7 @@ export const envSchema = z.object({
   // Gemini's OpenAI-compatible gateway: same /chat/completions format as the
   // OpenCode route, so one client serves both.
   GEMINI_BASE_URL: z.string().default('https://generativelanguage.googleapis.com/v1beta/openai'),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
   GEMINI_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
   GEMINI_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 

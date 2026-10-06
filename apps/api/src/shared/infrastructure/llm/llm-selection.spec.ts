@@ -33,7 +33,7 @@ function adapters(): AdapterSet {
   return {
     anthropic: make('claude-sonnet-4-5'),
     opencode: make('glm-5.2'),
-    gemini: make('gemini-2.5-flash'),
+    gemini: make('gemini-3.8-flash'),
     scripted: make('scripted-local'),
   }
 }
@@ -45,7 +45,7 @@ describe('selectAdapters', () => {
       'glm-5.2',
     )
     expect(selectAdapters(configFor({ MODEL_PROVIDER: 'gemini', GEMINI_API_KEY: 'sk-gem' }), set).modelId).toBe(
-      'gemini-2.5-flash',
+      'gemini-3.8-flash',
     )
     expect(
       selectAdapters(configFor({ MODEL_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'sk-ant' }), set).modelId,
@@ -70,7 +70,7 @@ describe('describeLlmMode', () => {
       'OpenCode Zen (glm-5.2 via https://opencode.ai/zen/v1)',
     )
     expect(describeLlmMode(configFor({ GEMINI_API_KEY: 'sk-gem' }))).toBe(
-      'Gemini (gemini-2.5-flash via https://generativelanguage.googleapis.com/v1beta/openai)',
+      'Gemini (gemini-3.8-flash via https://generativelanguage.googleapis.com/v1beta/openai)',
     )
     expect(describeLlmMode(configFor({ ANTHROPIC_API_KEY: 'sk-ant' }))).toBe('Anthropic (claude-sonnet-5-5)')
   })
