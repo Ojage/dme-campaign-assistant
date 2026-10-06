@@ -42,7 +42,7 @@ const columnHelper = createColumnHelper<Customer>()
 export function CustomerTable() {
   const { t } = useTranslation('customers')
   const { t: tCommon } = useTranslation('common')
-  const { flashId, flashClass } = useFocusFlash()
+  const { flashId, flashTarget, flashClass } = useFocusFlash('customers')
   const {
     customers,
     total,
@@ -140,7 +140,10 @@ export function CustomerTable() {
   if (error) return <ErrorMessage message={error} onRetry={retry} />
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+          data-focus-section="customers"
+          className={cn('flex flex-col gap-4 rounded-xl', flashTarget === 'section' && flashClass)}
+        >
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-56 flex-1 max-w-xs">
@@ -235,7 +238,7 @@ export function CustomerTable() {
                   <TableRow
                     key={row.id}
                     data-focus-id={customerId}
-                    className={cn('transition-colors', customerId === flashId && flashClass)}
+                    className={cn('transition-colors', customerId === flashId && flashTarget === 'row' && flashClass)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>

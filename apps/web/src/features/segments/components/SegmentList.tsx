@@ -37,7 +37,7 @@ function describeCondition(segment: Segment, format: (field: SegmentConditionFie
 export function SegmentList() {
   const { t } = useTranslation('segments')
   const { segments, isLoading, error, deletingId, reload, deleteSegment } = useSegments()
-  const { flashId, flashClass } = useFocusFlash()
+  const { flashId, flashTarget, flashClass } = useFocusFlash('segments')
 
   const formatValue = (field: SegmentConditionField, value: string | number): string =>
     field === SegmentConditionField.TOTAL_AMOUNT_SPENT ? formatXaf(Number(value)) : String(value)
@@ -45,7 +45,7 @@ export function SegmentList() {
   if (error) return <ErrorMessage message={error} onRetry={reload} />
 
   return (
-    <Card>
+    <Card data-focus-section="segments" className={cn(flashTarget === 'section' && flashClass)}>
       <CardHeader>
         <CardTitle>{t('list.title')}</CardTitle>
         <CardDescription>{t('list.description')}</CardDescription>
@@ -68,7 +68,9 @@ export function SegmentList() {
               data-focus-id={segment.id}
               className={cn(
                 'flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-muted/40',
-                segment.id === flashId && flashClass,
+                segment.id === flashId &&
+                flashTarget === 'row' &&
+                flashClass,
               )}
             >
               <div className="min-w-0">
