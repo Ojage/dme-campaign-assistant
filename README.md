@@ -97,3 +97,69 @@ boot; set `MODEL_PROVIDER` to pin one explicitly. See
 ## Requirements
 
 Node ≥ 20.19, pnpm ≥ 9, Docker (for PostgreSQL).
+
+## AI usage
+
+This project was built with AI assistance, and it also ships its own AI features.
+Those are two different things, and this section covers both honestly.
+
+### Which AI tools were used
+
+To build the project:
+
+- **opencode** — a terminal-based AI coding agent (powered by the *big-pickle*
+  model) used across the whole repository: the API modules, the React app, the
+  shared contracts package, the Docker/CI infrastructure, and this documentation.
+
+The product itself runs hosted models at runtime — OpenAI-compatible gateways
+(Anthropic, Gemini, OpenCode Zen) or a deterministic local generator with no key.
+That is a shipped feature, not a development tool, and is covered below in
+[Without a model key](#without-a-model-key).
+
+### What they were used for
+
+- Implementing features end to end: the five brief requirements — dashboard KPIs,
+  the segment condition builder, the campaign form tied to a segment, AI campaign
+  output, and the AI service-layer separation — plus auth, streaming chat,
+  idempotency and error boundaries.
+- Writing the documentation set in `docs/` and this README.
+- Infrastructure: Dockerfiles, compose files, CI workflows, and the production
+  deploy pipeline.
+- Debugging: reproducing provider failures against real gateways and diagnosing
+  machine-level causes — for example a dead IPv6 route that made Node's fetch time
+  out while `curl` succeeded.
+
+### Where an AI-generated suggestion was modified
+
+The first draft of the assistant's system prompt described the company as "a bank
+in Cameroon." That framing was wrong — DME is a software company that provides
+digital marketing to clients in banking, sports, betting and other industries,
+and is not itself a bank. The suggestion was rejected and rewritten: the prompts
+now state DME's role explicitly, and the "never invent" guardrail was changed from
+banking terms ("account numbers, balances, interest rates") to neutral ones
+("customer names, figures, fees"). See `campaign.use-cases.ts` and
+`chat.use-cases.ts`.
+
+A second example: the default Gemini model was initially `gemini-2.5-flash`. The
+gateway answered `404` saying that model was retired, so the default moved to
+`gemini-3.8-flash` — the replacement the gateway itself suggested — and the change
+was covered by tests.
+
+### How AI-generated code was verified
+
+- **Type checking.** `pnpm typecheck` compiles the contracts, API and web app;
+  the boundary is typed and the codebase holds `no-any`.
+- **Tests.** `pnpm test` runs the jest suites — domain rules, use cases, the AI
+  adapters, request validation, idempotency: 13 suites, ~200 tests.
+- **Builds.** `pnpm build` produces production builds for all three packages, and
+  CI additionally builds both Docker images so Dockerfile drift fails before it
+  ships.
+- **Contract enforcement.** Both halves of the wire import the same zod schemas,
+  so an AI-written change cannot make the client and server disagree without
+  failing compilation.
+- **CI on every push.** Typecheck, tests, build and an OpenAPI drift check
+  (`pnpm openapi:write` plus `git diff --exit-code`) gate `main`.
+- **Runtime checks.** Boot logs state which model is bound; failure paths were
+  reproduced live (the `UND_ERR_CONNECT_TIMEOUT` chain and the retired-model
+  `404`), and the error boundary UI was smoke-tested against a running dev server.
+- **Human review.** Every commit was reviewed as a diff before it was pushed.
