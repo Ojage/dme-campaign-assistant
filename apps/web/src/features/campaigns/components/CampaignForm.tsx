@@ -76,6 +76,7 @@ export function CampaignForm({ form }: { form: Form }) {
           leftIcon={<Sparkles className="h-4 w-4" />}
           isLoading={form.isGenerating}
           onClick={() => void form.generate()}
+          className="w-full sm:w-auto"
         >
           {form.isGenerating ? t('form.generating') : t('form.generate')}
         </Button>

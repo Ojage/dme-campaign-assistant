@@ -78,7 +78,7 @@ export function AgentDrawer({ open, onClose }: { open: boolean; onClose: () => v
       initial={{ x: '100%' }}
       animate={{ x: open ? 0 : '100%' }}
       transition={{ type: 'tween', duration: 0.28, ease: 'easeOut' }}
-      className="absolute inset-y-0 right-0 z-40 flex w-[440px] max-w-[86%] flex-col border-l border-border bg-card shadow-retool-lg"
+      className="absolute inset-y-0 right-0 z-40 flex w-full flex-col border-l border-border bg-card shadow-retool-lg sm:w-[440px] sm:max-w-[86%]"
       aria-hidden={!open}
     >
       {/* Header */}

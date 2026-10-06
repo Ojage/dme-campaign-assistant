@@ -200,7 +200,7 @@ export function SearchConsole({ onClose }: { onClose: () => void }) {
 
   return (
     <motion.div
-      className="absolute inset-0 z-40"
+      className="absolute inset-0 z-50"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

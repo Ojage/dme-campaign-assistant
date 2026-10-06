@@ -58,7 +58,7 @@ export function TopBar({ onOpenSearch, onOpenAgent, onToggleNav }: TopBarProps) 
           onClick={onToggleNav}
           aria-label={t('topbar.navMenu')}
           aria-controls="mobile-nav"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/15 hover:text-white lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/15 hover:text-white -ml-2 lg:hidden lg:h-8 lg:w-8"
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -72,7 +72,7 @@ export function TopBar({ onOpenSearch, onOpenAgent, onToggleNav }: TopBarProps) 
         <button
           type="button"
           onClick={onOpenAgent}
-          className="flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-white/20 sm:px-3.5"
+          className="flex min-h-10 items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20 sm:px-3.5"
         >
           <Sparkles className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">{t('topbar.agent')}</span>
@@ -82,7 +82,7 @@ export function TopBar({ onOpenSearch, onOpenAgent, onToggleNav }: TopBarProps) 
           type="button"
           onClick={onOpenSearch}
           aria-label={t('topbar.search')}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/15 hover:text-white"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/15 hover:text-white"
         >
           <Search className="h-4 w-4" />
         </button>
@@ -92,7 +92,7 @@ export function TopBar({ onOpenSearch, onOpenAgent, onToggleNav }: TopBarProps) 
             <button
               type="button"
               aria-label="Account menu"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-bold text-[hsl(var(--bar))] ring-2 ring-white/30 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xs font-bold text-[hsl(var(--bar))] ring-2 ring-white/30 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               {initials || 'M'}
             </button>

@@ -47,13 +47,27 @@ export function AppLayout() {
 
   useEffect(() => setNavOpen(false), [location])
 
+  // The three overlays are mutually exclusive: opening one dismisses the other
+  // two, so no ghost drawer can linger behind the search palette on mobile.
+  const openSearch = () => {
+    setAgentOpen(false)
+    setNavOpen(false)
+    setSearchOpen(true)
+  }
+  const openAgent = () => {
+    setSearchOpen(false)
+    setNavOpen(false)
+    setAgentOpen(true)
+  }
+  const toggleNav = () => {
+    setSearchOpen(false)
+    setAgentOpen(false)
+    setNavOpen((open) => !open)
+  }
+
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-[hsl(var(--bar))]">
-      <TopBar
-        onOpenSearch={() => setSearchOpen(true)}
-        onOpenAgent={() => setAgentOpen(true)}
-        onToggleNav={() => setNavOpen((open) => !open)}
-      />
+      <TopBar onOpenSearch={openSearch} onOpenAgent={openAgent} onToggleNav={toggleNav} />
 
       {/* Child panel */}
       <div className="min-h-0 flex-1 p-2 pt-1.5">

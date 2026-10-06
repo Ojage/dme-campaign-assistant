@@ -74,11 +74,11 @@ export function SegmentBuilder({ onCreated }: SegmentBuilderProps) {
           <p className="text-sm text-success">{t('builder.saved', { name: builder.savedName })}</p>
         ) : null}
 
-        <div className="flex items-center gap-2">
-          <Button leftIcon={<Save className="h-4 w-4" />} isLoading={builder.isSaving} onClick={() => void builder.save()}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+          <Button leftIcon={<Save className="h-4 w-4" />} isLoading={builder.isSaving} onClick={() => void builder.save()} className="w-full sm:w-auto">
             {t('builder.save')}
           </Button>
-          <Button variant="ghost" onClick={builder.reset}>
+          <Button variant="ghost" onClick={builder.reset} className="w-full sm:w-auto">
             {t('builder.clear')}
           </Button>
         </div>

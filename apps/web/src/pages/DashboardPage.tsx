@@ -53,6 +53,7 @@ export default function DashboardPage() {
             <Button
               leftIcon={<Megaphone className="h-4 w-4" />}
               onClick={() => navigate(RoutePath.CAMPAIGNS)}
+              className="w-full sm:w-auto"
             >
               {t('newCampaign')}
             </Button>
