@@ -3,12 +3,15 @@ import * as z from 'zod/v4'
 import { newCustomerSchema } from '@dme/contracts'
 import { CUSTOMER_PORTS } from '../ports/customer.ports'
 import type { CustomerRepository } from '../ports/customer.ports'
-import { Customer } from '../../domain/customer.entity'
+import { Customer, computeCustomerHealth } from '../../domain/customer.entity'
 import type {
+  ActivityTrendPoint,
   CountrySpend,
+  CustomerHealth,
   CustomerKpis,
   CustomerStatus,
   ListCustomersQuery,
+  TopCustomer,
 } from '../../domain/customer.entity'
 import { ConflictError, ValidationError } from '../../../../shared/domain/domain.errors'
 
@@ -27,6 +30,38 @@ export class GetCustomerKpis {
 
   public execute(): Promise<CustomerKpis> {
     return this.customers.kpis()
+  }
+}
+
+@Injectable()
+export class GetActivityTrend {
+  public constructor(@Inject(CUSTOMER_PORTS.repository) private readonly customers: CustomerRepository) {}
+
+  public execute(months: number): Promise<ActivityTrendPoint[]> {
+    return this.customers.activityTrend(months)
+  }
+}
+
+/**
+ * Fetches the raw counts, then folds them into the derived score. The report is
+ * domain logic, so it stays in the pure `computeCustomerHealth` function rather
+ * than leaking into the controller or the adapter.
+ */
+@Injectable()
+export class GetCustomerHealth {
+  public constructor(@Inject(CUSTOMER_PORTS.repository) private readonly customers: CustomerRepository) {}
+
+  public async execute(): Promise<CustomerHealth> {
+    return computeCustomerHealth(await this.customers.healthCounts())
+  }
+}
+
+@Injectable()
+export class GetTopCustomers {
+  public constructor(@Inject(CUSTOMER_PORTS.repository) private readonly customers: CustomerRepository) {}
+
+  public execute(limit: number): Promise<{ items: TopCustomer[]; totalValue: number }> {
+    return this.customers.top(limit)
   }
 }
 

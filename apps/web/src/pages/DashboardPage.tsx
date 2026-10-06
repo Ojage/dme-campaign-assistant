@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Users, UserCheck, Banknote, Coins, Megaphone } from 'lucide-react'
+import { Megaphone, PieChart, Target, Users } from 'lucide-react'
 import { PageWrapper } from '@/components/common/PageWrapper'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatCard } from '@/components/common/StatCard'
@@ -12,23 +13,35 @@ import {
   SpendByCountryCard,
   StatusBreakdownCard,
 } from '@/features/dashboard/components/DashboardCharts'
+import { CustomerHealthCard } from '@/features/dashboard/components/CustomerHealthCard'
+import { TopCustomersCard } from '@/features/dashboard/components/TopCustomersCard'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
-import { formatNumber, formatXafCompact } from '@/utils/formatters'
+import { formatNumber } from '@/utils/formatters'
+import { cn } from '@/lib/utils'
 import { RoutePath } from '@/app/router/RoutePaths'
+
+function ChartSkeleton() {
+  return <div className="h-[340px] animate-pulse rounded-xl border border-border bg-card" />
+}
+
+const EMPTY_STATUS_COUNTS = { active: 0, inactive: 0, churned: 0 }
 
 export default function DashboardPage() {
   const { t } = useTranslation('dashboard')
   const navigate = useNavigate()
-  const { kpis, spendByCountry, revenueTrend, isLoading, error, reload } = useDashboard()
-
-  // Inactive covers both inactive and churned in the KPI aggregate; churned
-  // shows as zero until the api layer exposes a per-status breakdown.
-  const statusData = kpis
-    ? [
-        { name: t('charts.active'), value: kpis.activeCustomers },
-        { name: t('charts.inactive'), value: kpis.totalCustomers - kpis.activeCustomers },
-      ]
-    : []
+  const [months, setMonths] = useState(6)
+  const {
+    kpis,
+    spendByCountry,
+    revenueTrend,
+    health,
+    topCustomers,
+    topTotalValue,
+    segmentsSummary,
+    isLoading,
+    error,
+    reload,
+  } = useDashboard(months)
 
   return (
     <PageWrapper>
@@ -55,50 +68,54 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
               <div className="xl:col-span-2">
                 {isLoading ? (
-                  <div className="h-[340px] animate-pulse rounded-xl border border-border bg-card" />
+                  <ChartSkeleton />
                 ) : (
-                  <RevenueTrendCard data={revenueTrend} />
+                  <RevenueTrendCard data={revenueTrend} months={months} onMonthsChange={setMonths} />
                 )}
               </div>
-              {isLoading ? (
-                <div className="h-[340px] animate-pulse rounded-xl border border-border bg-card" />
-              ) : (
-                <StatusBreakdownCard data={statusData} />
-              )}
+              <div>
+                {isLoading ? (
+                  <ChartSkeleton />
+                ) : (
+                  <StatusBreakdownCard data={kpis?.statusCounts ?? EMPTY_STATUS_COUNTS} />
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-              <div className="xl:col-span-2">
-                {isLoading ? (
-                  <div className="h-[340px] animate-pulse rounded-xl border border-border bg-card" />
-                ) : (
-                  <SpendByCountryCard data={spendByCountry} />
-                )}
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <StatCard
-                  icon={Users}
-                  label={t('stats.customerBase')}
-                  value={kpis ? formatNumber(kpis.totalCustomers) : '—'}
-                  hint={t('stats.acrossMarkets')}
-                />
-                <StatCard
-                  icon={UserCheck}
-                  label={t('stats.activeShare')}
-                  value={kpis ? `${Math.round((kpis.activeCustomers / kpis.totalCustomers) * 100)}%` : '—'}
-                  hint={t('stats.activeVsTotal')}
-                  tone="accent"
-                />
-                <StatCard
-                  icon={Banknote}
-                  label={t('stats.lifetimeValue')}
-                  value={kpis ? formatXafCompact(kpis.totalTransactionValue) : '—'}
-                  hint={t('stats.avgPerCustomer', {
-                    value: kpis ? formatXafCompact(kpis.averageCustomerValue) : '—',
-                  })}
-                />
-                <StatCard icon={Coins} label={t('stats.segmentsReady')} value="3" hint={t('stats.savedAudiences')} />
-              </div>
+              <div>{isLoading ? <ChartSkeleton /> : <SpendByCountryCard data={spendByCountry} />}</div>
+              <div>{isLoading ? <ChartSkeleton /> : <CustomerHealthCard health={health} />}</div>
+              <div>{isLoading ? <ChartSkeleton /> : <TopCustomersCard items={topCustomers} totalValue={topTotalValue} />}</div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className={cn('h-24 animate-pulse rounded-xl border border-border bg-card')} />
+                ))
+              ) : (
+                <>
+                  <StatCard
+                    icon={PieChart}
+                    label={t('stats.segmentsReady')}
+                    value={segmentsSummary ? formatNumber(segmentsSummary.count) : '—'}
+                    hint={t('stats.savedAudiences')}
+                  />
+                  <StatCard
+                    icon={Users}
+                    label={t('stats.totalReach')}
+                    value={segmentsSummary ? formatNumber(segmentsSummary.totalAudience) : '—'}
+                    hint={t('stats.reachDescription')}
+                    tone="accent"
+                  />
+                  <StatCard
+                    icon={Target}
+                    label={t('stats.avgAudience')}
+                    value={segmentsSummary ? formatNumber(Math.round(segmentsSummary.averageAudience)) : '—'}
+                    hint={t('stats.avgAudienceDescription')}
+                  />
+                </>
+              )}
             </div>
           </>
         )}

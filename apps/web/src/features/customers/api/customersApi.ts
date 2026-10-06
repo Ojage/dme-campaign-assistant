@@ -11,8 +11,11 @@ import { ApiError } from '@dme/contracts/http'
 import { apiClient } from '@/lib/api/apiClient'
 import {
   CustomerStatus,
+  type ActivityTrendPoint,
   type Customer,
+  type CustomerHealth,
   type CustomerKPIs,
+  type CustomerTopList,
   type CustomersFilters,
   type NewCustomerPayload,
 } from '@/features/customers/types/customer.types'
@@ -43,6 +46,21 @@ export async function getCustomers(filters: Partial<CustomersFilters>): Promise<
 
 export function getCustomerKPIs(): Promise<CustomerKPIs> {
   return apiClient.call('customers.kpis')
+}
+
+/** Trailing-month activity series for the trend chart. */
+export function getActivityTrend(months: number): Promise<ActivityTrendPoint[]> {
+  return apiClient.call('customers.activityTrend', { query: { months } })
+}
+
+/** Composite health report for the base. */
+export function getCustomerHealth(): Promise<CustomerHealth> {
+  return apiClient.call('customers.health')
+}
+
+/** Highest-value customers plus the base's lifetime value, for the leaderboard. */
+export function getTopCustomers(limit = 5): Promise<CustomerTopList> {
+  return apiClient.call('customers.top', { query: { limit } })
 }
 
 export function getCountries(): Promise<string[]> {

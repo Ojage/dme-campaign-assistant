@@ -8,7 +8,7 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
-import { ChevronDown, ChevronUp, Search, UserPlus, Upload } from 'lucide-react'
+import { ChevronDown, ChevronUp, Search, UserPlus, Upload, Users } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import {
@@ -25,8 +25,9 @@ import { CustomerTableSkeleton } from '@/features/customers/components/CustomerT
 import { AddCustomerDialog } from '@/features/customers/components/AddCustomerDialog'
 import { ImportCustomersDialog } from '@/features/customers/components/ImportCustomersDialog'
 import { useCustomers, PAGE_SIZE_OPTIONS } from '@/features/customers/hooks/useCustomers'
+import { useCustomerKPIs } from '@/features/customers/hooks/useCustomerKPIs'
 import { CustomerStatus, type Customer } from '@/features/customers/types/customer.types'
-import { formatDate, formatXaf } from '@/utils/formatters'
+import { formatDate, formatNumber, formatXaf } from '@/utils/formatters'
 import { getCountries } from '@/features/customers/api/customersApi'
 import { useFocusFlash } from '@/features/search/hooks/useFocusFlash'
 import { cn } from '@/lib/utils'
@@ -57,6 +58,12 @@ export function CustomerTable() {
     handlePageChange,
     handlePageSizeChange,
   } = useCustomers()
+  const { kpis } = useCustomerKPIs()
+
+  // Per-status headcounts enrich the status filter and tell an empty table apart
+  // from an empty base.
+  const statusCounts = kpis?.statusCounts
+  const hasAnyCustomers = (kpis?.totalCustomers ?? 0) > 0
 
   const [countries, setCountries] = useState<string[]>([])
   const [addOpen, setAddOpen] = useState(false)
@@ -156,14 +163,16 @@ export function CustomerTable() {
           />
         </div>
         <Select value={filters.status} onValueChange={(v) => handleStatusChange(v as CustomerStatus | 'all')}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-44">
             <SelectValue placeholder={tCommon('status.all')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{tCommon('status.all')}</SelectItem>
+            <SelectItem value="all">
+              {statusCounts ? `${tCommon('status.all')} (${formatNumber(kpis?.totalCustomers ?? 0)})` : tCommon('status.all')}
+            </SelectItem>
             {Object.values(CustomerStatus).map((status) => (
               <SelectItem key={status} value={status}>
-                {statusLabels[status]}
+                {statusCounts ? `${statusLabels[status]} (${formatNumber(statusCounts[status])})` : statusLabels[status]}
               </SelectItem>
             ))}
           </SelectContent>
@@ -198,11 +207,20 @@ export function CustomerTable() {
       {isLoading ? (
         <CustomerTableSkeleton rows={filters.limit > 10 ? 10 : 8} />
       ) : customers.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          title={t('empty.title')}
-          description={t('empty.description')}
-        />
+        hasAnyCustomers ? (
+          <EmptyState
+            icon={Search}
+            title={t('empty.title')}
+            description={t('empty.description')}
+          />
+        ) : (
+          <EmptyState
+            icon={Users}
+            title={t('empty.noCustomers.title')}
+            description={t('empty.noCustomers.description')}
+            action={<Button size="sm" onClick={() => setImportOpen(true)}>{t('empty.noCustomers.import')}</Button>}
+          />
+        )
       ) : (
         // Border lives here; the horizontal scrollport is Table's own wrapper, so
         // this container must not scroll again — nested scrollports stack two bars.

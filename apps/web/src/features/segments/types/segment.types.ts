@@ -1,6 +1,7 @@
 import type {
   SegmentField as ContractField,
   SegmentOperator as ContractOperator,
+  SegmentSummary as ContractSegmentSummary,
 } from '@dme/contracts'
 
 /** Const objects, not enums, so the values are the contract's own unions. */
@@ -35,6 +36,9 @@ export interface Segment {
   matchCount: number
   createdAt: string
 }
+
+/** Aggregate reach of the saved segments, typed off the shared contract. */
+export type SegmentSummary = ContractSegmentSummary
 
 /**
  * Conditions as the builder holds them: no ids yet, values still text. The API

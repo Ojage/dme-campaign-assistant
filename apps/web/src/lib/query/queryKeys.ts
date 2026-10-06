@@ -14,9 +14,13 @@ export const queryKeys = {
     kpis: ['customers', 'kpis'] as const,
     countries: ['customers', 'countries'] as const,
     countrySpend: ['customers', 'country-spend'] as const,
+    activityTrend: (months: number) => ['customers', 'activity-trend', months] as const,
+    health: ['customers', 'health'] as const,
+    top: ['customers', 'top'] as const,
   },
   segments: {
     all: ['segments'] as const,
+    summary: ['segments', 'summary'] as const,
   },
   campaigns: {
     all: ['campaigns'] as const,

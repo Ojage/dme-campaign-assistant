@@ -1,6 +1,8 @@
 import * as z from 'zod/v4'
 import {
   accessTokenSchema,
+  activityTrendPointSchema,
+  activityTrendQuerySchema,
   campaignSchema,
   campaignStatusSchema,
   chatMessageSchema,
@@ -10,9 +12,11 @@ import {
   createSegmentRequestSchema,
   createThreadRequestSchema,
   credentialsSchema,
+  customerHealthSchema,
   customerKpisSchema,
   customerPageSchema,
   customerSchema,
+  customerTopListSchema,
   generateCampaignRequestSchema,
   importCustomersRequestSchema,
   importCustomersResponseSchema,
@@ -23,9 +27,11 @@ import {
   searchResponseSchema,
   segmentPreviewRequestSchema,
   segmentSchema,
+  segmentSummarySchema,
   sendMessageRequestSchema,
   sendMessageResponseSchema,
   sessionSchema,
+  topCustomersQuerySchema,
 } from '../domains/index.js'
 import { ApiError, type ErrorCode } from './problem.js'
 
@@ -144,7 +150,45 @@ export const operations = {
     auth: true,
     summary: 'Customer KPIs',
     description:
-      'Aggregate totals for the dashboard: headcount, active customers, lifetime value and average value.',
+      'Aggregate totals for the dashboard: headcount, active customers, lifetime value, average value and the per-status headcount split.',
+    tags: ['Customers'],
+    errors: [],
+  },
+
+  'customers.activityTrend': {
+    method: 'GET',
+    query: activityTrendQuerySchema,
+    path: '/customers/trend',
+    response: z.array(activityTrendPointSchema),
+    auth: true,
+    summary: 'Customer activity trend',
+    description:
+      'Customers bucketed by the month of their last activity, trailing the requested number of months (default 6, max 24). Each point carries the lifetime value those customers represent, the customer count and the churned count, ascending by month.',
+    tags: ['Customers'],
+    errors: [],
+  },
+
+  'customers.health': {
+    method: 'GET',
+    path: '/customers/health',
+    response: customerHealthSchema,
+    auth: true,
+    summary: 'Customer base health',
+    description:
+      'A composite score from 0 to 100 with a `healthy` / `attention` / `critical` level, the active and churned shares, the inactive headcount and the number of still-`active` customers whose last activity is older than 60 days.',
+    tags: ['Customers'],
+    errors: [],
+  },
+
+  'customers.top': {
+    method: 'GET',
+    query: topCustomersQuerySchema,
+    path: '/customers/top',
+    response: customerTopListSchema,
+    auth: true,
+    summary: 'Top customers by lifetime value',
+    description:
+      'The highest-value customers plus the lifetime value of the whole base, so a leaderboard can render each share without a second call.',
     tags: ['Customers'],
     errors: [],
   },
@@ -248,6 +292,18 @@ export const operations = {
       'Counts the customers matching unsaved conditions. Use it while building, before committing a segment.',
     tags: ['Segments'],
     errors: ['validation_failed'],
+  },
+
+  'segments.summary': {
+    method: 'GET',
+    path: '/segments/summary',
+    response: segmentSummarySchema,
+    auth: true,
+    summary: 'Saved segments summary',
+    description:
+      'Aggregate figures for the dashboard: how many segments are saved and how much audience they cover in total and on average.',
+    tags: ['Segments'],
+    errors: [],
   },
 
   'campaigns.list': {

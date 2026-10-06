@@ -1,15 +1,19 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { In, Repository, type SelectQueryBuilder } from 'typeorm'
+import { In, Repository, type SelectQueryBuilder, LessThan } from 'typeorm'
 import type { CustomerRepository } from '../application/ports/customer.ports'
 import {
   isCustomerStatus,
   Customer,
+  STALE_ACTIVITY_DAYS,
+  type ActivityTrendPoint,
   type CountrySpend,
+  type CustomerHealthInput,
   type CustomerKpis,
   type CustomerSortField,
   type CustomerStatus,
   type ListCustomersQuery,
+  type TopCustomer,
 } from '../domain/customer.entity'
 import { CustomerOrmEntity } from '../../../shared/infrastructure/persistence/customer.orm-entity'
 
@@ -98,14 +102,25 @@ export class TypeOrmCustomerRepository implements CustomerRepository {
   }
 
   public async kpis(): Promise<CustomerKpis> {
-    const [total, active, aggregate] = await Promise.all([
+    const [total, active, aggregate, byStatus] = await Promise.all([
       this.repository.count(),
       this.repository.count({ where: { status: 'active' } }),
       this.repository
         .createQueryBuilder('customer')
         .select('COALESCE(SUM(customer.totalAmountSpent), 0)', 'spend')
         .getRawOne<{ spend: string }>(),
+      this.repository
+        .createQueryBuilder('customer')
+        .select('customer.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .groupBy('customer.status')
+        .getRawMany<{ status: string; count: string }>(),
     ])
+
+    const counts = { active: 0, inactive: 0, churned: 0 }
+    for (const row of byStatus) {
+      if (isCustomerStatus(row.status)) counts[row.status] = Number(row.count)
+    }
 
     const totalValue = Number(aggregate?.spend ?? 0)
     return {
@@ -113,6 +128,74 @@ export class TypeOrmCustomerRepository implements CustomerRepository {
       activeCustomers: active,
       totalTransactionValue: totalValue,
       averageCustomerValue: total === 0 ? 0 : Math.round((totalValue / total) * 100) / 100,
+      statusCounts: counts,
+    }
+  }
+
+  public async activityTrend(months: number): Promise<ActivityTrendPoint[]> {
+    // Bucketing by month of `lastActivityDate` defines the trailing window; the
+    // literal interval keeps the window closed, so a 12-month trend is genuinely
+    // the last twelve calendar months.
+    const rows = await this.repository
+      .createQueryBuilder('customer')
+      .select("to_char(customer.lastActivityDate, 'YYYY-MM')", 'month')
+      .addSelect('COALESCE(SUM(customer.totalAmountSpent), 0)', 'value')
+      .addSelect('COUNT(*)', 'customers')
+      .addSelect("COUNT(*) FILTER (WHERE customer.status = 'churned')", 'churned')
+      .where("customer.lastActivityDate >= (now() - make_interval(months => :months))", { months })
+      .groupBy("to_char(customer.lastActivityDate, 'YYYY-MM')")
+      .orderBy("to_char(customer.lastActivityDate, 'YYYY-MM')", 'ASC')
+      .getRawMany<{ month: string; value: string; customers: string; churned: string }>()
+
+    return rows.map((row) => ({
+      month: row.month,
+      value: Number(row.value),
+      customers: Number(row.customers),
+      churned: Number(row.churned),
+    }))
+  }
+
+  public async healthCounts(): Promise<CustomerHealthInput> {
+    const [total, active, inactive, churned, staleActives] = await Promise.all([
+      this.repository.count(),
+      this.repository.count({ where: { status: 'active' } }),
+      this.repository.count({ where: { status: 'inactive' } }),
+      this.repository.count({ where: { status: 'churned' } }),
+      this.repository.count({
+        where: {
+          status: 'active',
+          lastActivityDate: LessThan(new Date(Date.now() - STALE_ACTIVITY_DAYS * 86_400_000)),
+        },
+      }),
+    ])
+
+    return { total, active, inactive, churned, staleActives }
+  }
+
+  public async top(limit: number): Promise<{ items: TopCustomer[]; totalValue: number }> {
+    const [rows, aggregate] = await Promise.all([
+      this.repository
+        .createQueryBuilder('customer')
+        .orderBy('customer.totalAmountSpent', 'DESC')
+        .addOrderBy('customer.lastActivityDate', 'DESC')
+        .take(limit)
+        .getMany(),
+      this.repository
+        .createQueryBuilder('customer')
+        .select('COALESCE(SUM(customer.totalAmountSpent), 0)', 'spend')
+        .getRawOne<{ spend: string }>(),
+    ])
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        country: row.country,
+        status: isCustomerStatus(row.status) ? row.status : 'active',
+        totalAmountSpent: Number(row.totalAmountSpent),
+        totalTransactions: row.totalTransactions,
+      })),
+      totalValue: Number(aggregate?.spend ?? 0),
     }
   }
 

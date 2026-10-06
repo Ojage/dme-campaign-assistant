@@ -1,4 +1,4 @@
-import type { NewSegmentCondition, Segment } from '../../domain/segment.entity'
+import type { NewSegmentCondition, Segment, SegmentSummary } from '../../domain/segment.entity'
 
 /** Driven port for saved segments. */
 export interface SegmentRepository {
@@ -6,6 +6,8 @@ export interface SegmentRepository {
   findById(id: string): Promise<Segment | null>
   create(segment: Segment): Promise<Segment>
   delete(id: string): Promise<boolean>
+  /** Aggregate reach of the saved segments. */
+  summary(): Promise<SegmentSummary>
 }
 
 /**

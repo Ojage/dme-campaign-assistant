@@ -5,6 +5,7 @@ import { zodBody, zodParams } from '../../../../shared/http/zod-validation.pipe'
 import {
   CreateSegment,
   DeleteSegment,
+  GetSegmentSummary,
   ListSegments,
   PreviewSegment,
 } from '../../application/use-cases/segment.use-cases'
@@ -32,11 +33,17 @@ export class SegmentsController {
     private readonly createSegment: CreateSegment,
     private readonly deleteSegment: DeleteSegment,
     private readonly previewSegment: PreviewSegment,
+    private readonly getSummary: GetSegmentSummary,
   ) {}
 
   @Get()
   public async list(): Promise<SegmentResponse[]> {
     return (await this.listSegments.execute()).map(toResponse)
+  }
+
+  @Get('summary')
+  public async summary() {
+    return this.getSummary.execute()
   }
 
   @Post()

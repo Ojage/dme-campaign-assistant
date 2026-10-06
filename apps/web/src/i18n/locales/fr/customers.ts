@@ -19,6 +19,11 @@ export default {
   empty: {
     title: 'Aucun client ne correspond aux filtres',
     description: 'Essayez un autre terme, statut ou pays pour élargir les résultats.',
+    noCustomers: {
+      title: 'Aucun client pour l’instant',
+      description: 'Importez un CSV pour constituer votre base, ou ajoutez des clients un par un.',
+      import: 'Importer des clients',
+    },
   },
   actions: {
     addCustomer: 'Ajouter un client',

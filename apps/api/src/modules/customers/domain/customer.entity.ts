@@ -28,6 +28,86 @@ export interface CustomerKpis {
   readonly activeCustomers: number
   readonly totalTransactionValue: number
   readonly averageCustomerValue: number
+  readonly statusCounts: {
+    readonly active: number
+    readonly inactive: number
+    readonly churned: number
+  }
+}
+
+/** One month bucket of customer activity, keyed by the month of `lastActivityDate`. */
+export interface ActivityTrendPoint {
+  readonly month: string
+  readonly value: number
+  readonly customers: number
+  readonly churned: number
+}
+
+/**
+ * Raw headcounts that feed `computeCustomerHealth`, kept separate from the
+ * derived report so the pure function stays trivial to test.
+ */
+export interface CustomerHealthInput {
+  readonly total: number
+  readonly active: number
+  readonly inactive: number
+  readonly churned: number
+  /** Still-active accounts whose last activity predates the staleness window. */
+  readonly staleActives: number
+}
+
+export type CustomerHealthLevel = 'healthy' | 'attention' | 'critical'
+
+export interface CustomerHealth {
+  readonly score: number
+  readonly level: CustomerHealthLevel
+  readonly activeShare: number
+  readonly churnedShare: number
+  readonly inactiveCount: number
+  readonly staleActives: number
+}
+
+export const STALE_ACTIVITY_DAYS = 60
+
+/**
+ * Collapses the customer base into a single 0-100 score.
+ *
+ * Start from a perfect 100 and subtract a share of every symptom; the weights are
+ * documented by what they push a *pure* base to:
+ *   - all active and freshly engaged  -> 100 (`healthy`)
+ *   - all inactive                    -> 50  (`attention`)
+ *   - all stale (active but dormant)  -> 30  (`critical`)
+ *   - all churned                     -> 20  (`critical`)
+ * An empty base has no signal either way and is reported as `critical` with a
+ * score of 0 so the UI treats it as "nothing to show" rather than pretending
+ * the base is healthy.
+ */
+export function computeCustomerHealth(input: CustomerHealthInput): CustomerHealth {
+  const { total, active, inactive, churned, staleActives } = input
+  if (total <= 0) {
+    return { score: 0, level: 'critical', activeShare: 0, churnedShare: 0, inactiveCount: 0, staleActives: 0 }
+  }
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const activeShare = round1((active / total) * 100)
+  const churnedShare = round1((churned / total) * 100)
+  const churnedPct = (churned / total) * 100
+  const inactivePct = (inactive / total) * 100
+  const stalePct = (staleActives / total) * 100
+  const score = Math.max(0, Math.min(100, Math.round(100 - churnedPct * 0.8 - inactivePct * 0.5 - stalePct * 0.7)))
+  const level: CustomerHealthLevel = score >= 60 ? 'healthy' : score >= 40 ? 'attention' : 'critical'
+
+  return { score, level, activeShare, churnedShare, inactiveCount: inactive, staleActives }
+}
+
+/** A highest-value customer for the dashboard leaderboard. */
+export interface TopCustomer {
+  readonly id: string
+  readonly name: string
+  readonly country: string
+  readonly status: CustomerStatus
+  readonly totalAmountSpent: number
+  readonly totalTransactions: number
 }
 
 export interface CountrySpend {

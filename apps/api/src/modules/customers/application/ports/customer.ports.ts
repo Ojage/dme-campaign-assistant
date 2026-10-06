@@ -1,9 +1,12 @@
 import type {
+  ActivityTrendPoint,
   CountrySpend,
   Customer,
+  CustomerHealthInput,
   CustomerKpis,
   CustomerStatus,
   ListCustomersQuery,
+  TopCustomer,
 } from '../../domain/customer.entity'
 
 /** Driven port for customer storage. */
@@ -21,6 +24,12 @@ export interface CustomerRepository {
   countries(): Promise<string[]>
   spendByCountry(): Promise<CountrySpend[]>
   countByStatus(status: CustomerStatus): Promise<number>
+  /** Trailing-month activity series, ascending by month. */
+  activityTrend(months: number): Promise<ActivityTrendPoint[]>
+  /** Headcounts used to build the composite health report. */
+  healthCounts(): Promise<CustomerHealthInput>
+  /** Highest-value customers, descending, plus the whole base's lifetime value. */
+  top(limit: number): Promise<{ items: TopCustomer[]; totalValue: number }>
 }
 
 export const CUSTOMER_PORTS = {

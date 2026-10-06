@@ -24,6 +24,10 @@ export function KPISection({ kpis, isLoading }: KPISectionProps) {
 
   if (isLoading || !kpis) return <KpiSkeleton />
 
+  const activeShare = kpis.totalCustomers > 0 ? Math.round((kpis.activeCustomers / kpis.totalCustomers) * 100) : 0
+  const churnedHint =
+    kpis.statusCounts.churned > 0 ? ` · ${t('kpis.churned', { n: formatNumber(kpis.statusCounts.churned) })}` : ''
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
@@ -36,7 +40,7 @@ export function KPISection({ kpis, isLoading }: KPISectionProps) {
         icon={UserCheck}
         label={t('kpis.activeCustomers')}
         value={formatNumber(kpis.activeCustomers)}
-        hint={t('kpis.ofBase', { n: Math.round((kpis.activeCustomers / kpis.totalCustomers) * 100) })}
+        hint={`${t('kpis.ofBase', { n: activeShare })}${churnedHint}`}
         tone="accent"
       />
       <StatCard

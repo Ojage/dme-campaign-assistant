@@ -7,6 +7,13 @@ import type { GeneratedCampaign } from '@/features/campaigns/types/campaign.type
 import { useFocusFlash } from '@/features/search/hooks/useFocusFlash'
 import { cn } from '@/lib/utils'
 
+/** Status chips mirror the dashboard's semantic colours. */
+const STATUS_CLASSES: Record<GeneratedCampaign['status'], string> = {
+  draft: 'bg-muted text-muted-foreground',
+  ready: 'bg-success/15 text-success',
+  sent: 'bg-accent/15 text-accent',
+} as const
+
 export function RecentCampaigns({ campaigns }: { campaigns: GeneratedCampaign[] }) {
   const { t } = useTranslation('campaigns')
   const { flashId, flashTarget, flashClass } = useFocusFlash('campaigns')
@@ -35,7 +42,17 @@ export function RecentCampaigns({ campaigns }: { campaigns: GeneratedCampaign[] 
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">{campaign.title}</p>
-                <Badge variant="outline">{t(`form.channels.${campaign.channel}`)}</Badge>
+                <span className="flex items-center gap-2">
+                  <Badge variant="outline">{t(`form.channels.${campaign.channel}`)}</Badge>
+                  <span
+                    className={cn(
+                      'inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                      STATUS_CLASSES[campaign.status],
+                    )}
+                  >
+                    {t(`status.${campaign.status}`)}
+                  </span>
+                </span>
               </div>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {campaign.segmentName} · {formatDateTime(campaign.generatedAt)}

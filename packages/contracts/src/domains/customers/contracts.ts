@@ -76,8 +76,74 @@ export const customerKpisSchema = z.object({
   activeCustomers: z.number().int().min(0),
   totalTransactionValue: amountSchema,
   averageCustomerValue: amountSchema,
+  statusCounts: z.object({
+    active: z.number().int().min(0),
+    inactive: z.number().int().min(0),
+    churned: z.number().int().min(0),
+  }),
 })
 export type CustomerKpis = z.infer<typeof customerKpisSchema>
+
+/**
+ * One month of customer activity, bucketed by the month of `lastActivityDate`.
+ * `value` is the lifetime spend of the customers whose last activity falls in
+ * that month — a proxy for the value they carried, since the API stores no
+ * per-transaction history. `churned` counts the churned customers among them,
+ * which is what makes the shape readable as a churn curve.
+ */
+export const activityTrendPointSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  value: amountSchema,
+  customers: z.number().int().min(0),
+  churned: z.number().int().min(0),
+})
+export type ActivityTrendPoint = z.infer<typeof activityTrendPointSchema>
+
+export const activityTrendQuerySchema = z.object({
+  months: z.number().int().min(3).max(24).default(6),
+})
+export type ActivityTrendQuery = z.infer<typeof activityTrendQuerySchema>
+
+/**
+ * Composite health of the customer base. `staleActives` counts customers whose
+ * status is still `active` but whose last activity is older than 60 days —
+ * accounts heading for churn before the status catches up. The score and level
+ * are derived server-side so every renderer agrees on what "healthy" means.
+ */
+export const customerHealthLevelSchema = z.enum(['healthy', 'attention', 'critical'])
+export type CustomerHealthLevel = z.infer<typeof customerHealthLevelSchema>
+
+export const customerHealthSchema = z.object({
+  score: z.number().int().min(0).max(100),
+  level: customerHealthLevelSchema,
+  activeShare: z.number().min(0).max(100),
+  churnedShare: z.number().min(0).max(100),
+  inactiveCount: z.number().int().min(0),
+  staleActives: z.number().int().min(0),
+})
+export type CustomerHealth = z.infer<typeof customerHealthSchema>
+
+export const topCustomerSchema = z.object({
+  id: idSchema,
+  name: z.string().min(1),
+  country: z.string().min(2),
+  status: customerStatusSchema,
+  totalAmountSpent: amountSchema,
+  totalTransactions: z.number().int().min(0),
+})
+export type TopCustomer = z.infer<typeof topCustomerSchema>
+
+export const customerTopListSchema = z.object({
+  /** Total lifetime value of the whole base, so the client can render shares. */
+  totalValue: amountSchema,
+  items: z.array(topCustomerSchema),
+})
+export type CustomerTopList = z.infer<typeof customerTopListSchema>
+
+export const topCustomersQuerySchema = z.object({
+  limit: z.number().int().min(1).max(25).default(5),
+})
+export type TopCustomersQuery = z.infer<typeof topCustomersQuerySchema>
 
 export const countrySpendSchema = z.object({
   country: z.string().min(2),

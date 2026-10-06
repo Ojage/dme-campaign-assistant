@@ -38,7 +38,9 @@ export default {
   list: {
     title: 'Segments enregistrés',
     description: 'Audiences réutilisables pour le ciblage des campagnes.',
+    summary: '{{count}} segments · {{reach}} clients couverts',
     customers: '{{n}} clients',
+    shortCustomers: 'clients',
     created: 'créé le {{date}}',
     empty: {
       title: 'Aucun segment pour le moment',

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { SEGMENT_PORTS } from '../ports/segment.ports'
 import type { AudienceCounter, SegmentRepository } from '../ports/segment.ports'
-import { Segment, type NewSegment, type NewSegmentCondition } from '../../domain/segment.entity'
+import { Segment, SegmentSummary, type NewSegment, type NewSegmentCondition } from '../../domain/segment.entity'
 import { NotFoundError } from '../../../../shared/domain/domain.errors'
 
 @Injectable()
@@ -10,6 +10,15 @@ export class ListSegments {
 
   public execute(): Promise<Segment[]> {
     return this.segments.list()
+  }
+}
+
+@Injectable()
+export class GetSegmentSummary {
+  public constructor(@Inject(SEGMENT_PORTS.repository) private readonly segments: SegmentRepository) {}
+
+  public execute(): Promise<SegmentSummary> {
+    return this.segments.summary()
   }
 }
 

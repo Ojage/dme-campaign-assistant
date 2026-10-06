@@ -39,7 +39,7 @@ test('every registered operation appears exactly once', () => {
     return [{ name, path, method }]
   })
 
-  assert.equal(declared.length, 24)
+  assert.equal(declared.length, 28)
 
   for (const { name, path, method } of declared) {
     const entry = paths[path]

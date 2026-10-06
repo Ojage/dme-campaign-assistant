@@ -19,6 +19,11 @@ export default {
   empty: {
     title: 'No customers match your filters',
     description: 'Try a different search term, status, or country to widen the results.',
+    noCustomers: {
+      title: 'No customers yet',
+      description: 'Import a CSV to build your base, or add customers one by one.',
+      import: 'Import customers',
+    },
   },
   actions: {
     addCustomer: 'Add customer',

@@ -1,12 +1,21 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common'
 import * as z from 'zod/v4'
-import { importCustomersRequestSchema, listCustomersQuerySchema, newCustomerSchema } from '@dme/contracts'
+import {
+  activityTrendQuerySchema,
+  importCustomersRequestSchema,
+  listCustomersQuerySchema,
+  newCustomerSchema,
+  topCustomersQuerySchema,
+} from '@dme/contracts'
 import { zodBody, zodQuery } from '../../../../shared/http/zod-validation.pipe'
 import { isCustomerStatus, type ListCustomersQuery } from '../../domain/customer.entity'
 import {
   CreateCustomer,
+  GetActivityTrend,
+  GetCustomerHealth,
   GetCustomerKpis,
   GetSpendByCountry,
+  GetTopCustomers,
   ImportCustomers,
   ListCountries,
   ListCustomers,
@@ -34,6 +43,9 @@ export class CustomersController {
     private readonly createCustomer: CreateCustomer,
     private readonly importCustomers: ImportCustomers,
     private readonly getKpis: GetCustomerKpis,
+    private readonly getActivityTrend: GetActivityTrend,
+    private readonly getCustomerHealth: GetCustomerHealth,
+    private readonly getTopCustomers: GetTopCustomers,
   ) {}
 
   @Get()
@@ -54,6 +66,21 @@ export class CustomersController {
   @Get('kpis')
   public async kpis() {
     return this.getKpis.execute()
+  }
+
+  @Get('trend')
+  public async trend(@Query(zodQuery(activityTrendQuerySchema)) query: z.infer<typeof activityTrendQuerySchema>) {
+    return this.getActivityTrend.execute(query.months)
+  }
+
+  @Get('health')
+  public async health() {
+    return this.getCustomerHealth.execute()
+  }
+
+  @Get('top')
+  public async top(@Query(zodQuery(topCustomersQuerySchema)) query: z.infer<typeof topCustomersQuerySchema>) {
+    return this.getTopCustomers.execute(query.limit)
   }
 
   @Post()

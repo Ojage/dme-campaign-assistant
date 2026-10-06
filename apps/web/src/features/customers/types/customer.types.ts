@@ -1,4 +1,12 @@
-import type { CustomerStatus as ContractCustomerStatus, CustomerSortField as ContractSortField } from '@dme/contracts'
+import type {
+  ActivityTrendPoint as ContractActivityTrendPoint,
+  CustomerHealth as ContractCustomerHealth,
+  CustomerHealthLevel as ContractCustomerHealthLevel,
+  CustomerStatus as ContractCustomerStatus,
+  CustomerSortField as ContractSortField,
+  CustomerTopList as ContractCustomerTopList,
+  TopCustomer as ContractTopCustomer,
+} from '@dme/contracts'
 
 /**
  * UI vocabulary for a customer's status.
@@ -32,7 +40,20 @@ export interface CustomerKPIs {
   activeCustomers: number
   totalTransactionValue: number
   averageCustomerValue: number
+  /** Per-status headcount, the wire source for the status chart. */
+  statusCounts: {
+    active: number
+    inactive: number
+    churned: number
+  }
 }
+
+/** Dashboard-specific aggregates, typed straight off the shared contract. */
+export type ActivityTrendPoint = ContractActivityTrendPoint
+export type CustomerHealth = ContractCustomerHealth
+export type CustomerHealthLevel = ContractCustomerHealthLevel
+export type CustomerTopList = ContractCustomerTopList
+export type TopCustomer = ContractTopCustomer
 
 export type CustomersFilters = {
   search: string

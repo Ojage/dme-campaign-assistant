@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import type { Repository } from 'typeorm'
 import type { SegmentRepository } from '../application/ports/segment.ports'
-import { isSegmentField, isSegmentOperator, Segment, SegmentCondition, type SegmentField } from '../domain/segment.entity'
+import { isSegmentField, isSegmentOperator, Segment, SegmentCondition, SegmentSummary, type SegmentField } from '../domain/segment.entity'
 import { SegmentOrmEntity } from '../../../shared/infrastructure/persistence/segment.orm-entity'
 import { SegmentConditionOrmEntity } from '../../../shared/infrastructure/persistence/segment-condition.orm-entity'
 
@@ -69,5 +69,21 @@ export class TypeOrmSegmentRepository implements SegmentRepository {
   public async delete(id: string): Promise<boolean> {
     const result = await this.repository.delete({ id })
     return (result.affected ?? 0) > 0
+  }
+
+  public async summary(): Promise<SegmentSummary> {
+    const row = await this.repository
+      .createQueryBuilder('segment')
+      .select('COUNT(*)', 'count')
+      .addSelect('COALESCE(SUM(segment.matchCount), 0)', 'totalAudience')
+      .getRawOne<{ count: string; totalAudience: string }>()
+
+    const count = Number(row?.count ?? 0)
+    const totalAudience = Number(row?.totalAudience ?? 0)
+    return {
+      count,
+      totalAudience,
+      averageAudience: count === 0 ? 0 : Math.round((totalAudience / count) * 100) / 100,
+    }
   }
 }

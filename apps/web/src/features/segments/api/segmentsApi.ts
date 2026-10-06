@@ -8,13 +8,22 @@
 
 import type { CreateSegmentRequest } from '@dme/contracts'
 import { apiClient } from '@/lib/api/apiClient'
-import type { CreateSegmentPayload, Segment } from '@/features/segments/types/segment.types'
+import type {
+  CreateSegmentPayload,
+  Segment,
+  SegmentSummary,
+} from '@/features/segments/types/segment.types'
 import { SegmentConditionField } from '@/features/segments/types/segment.types'
 
 type DraftCondition = CreateSegmentPayload['conditions'][number]
 
 export function getSegments(): Promise<Segment[]> {
   return apiClient.call('segments.list')
+}
+
+/** Aggregate reach of the saved segments, shown on the dashboard. */
+export function getSegmentSummary(): Promise<SegmentSummary> {
+  return apiClient.call('segments.summary')
 }
 
 export function createSegment(payload: CreateSegmentPayload): Promise<Segment> {

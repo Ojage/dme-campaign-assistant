@@ -70,3 +70,11 @@ export const segmentPreviewResponseSchema = z.object({
   matchCount: z.number().int().min(0),
 })
 export type SegmentPreviewResponse = z.infer<typeof segmentPreviewResponseSchema>
+
+/** Aggregate figures about the saved segments, for the dashboard. */
+export const segmentSummarySchema = z.object({
+  count: z.number().int().min(0),
+  totalAudience: z.number().int().min(0),
+  averageAudience: z.number().min(0),
+})
+export type SegmentSummary = z.infer<typeof segmentSummarySchema>

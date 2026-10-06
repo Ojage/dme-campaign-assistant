@@ -27,6 +27,13 @@ export interface AudienceMember {
   readonly country: string
 }
 
+/** Aggregate figures about the saved segments, for the dashboard. */
+export interface SegmentSummary {
+  readonly count: number
+  readonly totalAudience: number
+  readonly averageAudience: number
+}
+
 export interface SegmentCondition {
   readonly id: string
   readonly field: SegmentField

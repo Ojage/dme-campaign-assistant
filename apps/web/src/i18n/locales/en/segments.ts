@@ -38,7 +38,9 @@ export default {
   list: {
     title: 'Saved segments',
     description: 'Reusable audiences for campaign targeting.',
+    summary: '{{count}} segments · {{reach}} customers covered',
     customers: '{{n}} customers',
+    shortCustomers: 'customers',
     created: 'created {{date}}',
     empty: {
       title: 'No segments yet',

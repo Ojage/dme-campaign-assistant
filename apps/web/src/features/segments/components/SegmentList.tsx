@@ -1,17 +1,20 @@
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import { Trash2, PieChart } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/common/Button'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorMessage } from '@/components/common/ErrorMessage'
-import { formatDate, formatXaf } from '@/utils/formatters'
+import { formatDate, formatNumber, formatXaf } from '@/utils/formatters'
 import {
   SegmentConditionField,
   SegmentConditionOperator,
   type Segment,
 } from '@/features/segments/types/segment.types'
 import { useSegments } from '@/features/segments/hooks/useSegments'
+import { getSegmentSummary } from '@/features/segments/api/segmentsApi'
+import { queryKeys } from '@/lib/query/queryKeys'
 import { useFocusFlash } from '@/features/search/hooks/useFocusFlash'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +40,10 @@ function describeCondition(segment: Segment, format: (field: SegmentConditionFie
 export function SegmentList() {
   const { t } = useTranslation('segments')
   const { segments, isLoading, error, deletingId, reload, deleteSegment } = useSegments()
+  const { data: summary } = useQuery({
+    queryKey: queryKeys.segments.summary,
+    queryFn: getSegmentSummary,
+  })
   const { flashId, flashTarget, flashClass } = useFocusFlash('segments')
 
   const formatValue = (field: SegmentConditionField, value: string | number): string =>
@@ -51,6 +58,11 @@ export function SegmentList() {
         <CardDescription>{t('list.description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        {summary ? (
+          <p className="-mt-1 text-xs font-medium text-muted-foreground">
+            {t('list.summary', { count: formatNumber(summary.count), reach: formatNumber(summary.totalAudience) })}
+          </p>
+        ) : null}
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-20 animate-pulse rounded-lg border border-border bg-card" />
@@ -76,8 +88,8 @@ export function SegmentList() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate text-sm font-semibold text-foreground">{segment.name}</p>
-                  <Badge className="bg-accent/15 text-accent hover:bg-accent/15">
-                    {t('list.customers', { n: segment.matchCount })}
+                  <Badge className="bg-accent/15 text-accent hover:bg-accent/15" title={t('list.customers', { n: segment.matchCount })}>
+                    {formatNumber(segment.matchCount)} {t('list.shortCustomers')}
                   </Badge>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
