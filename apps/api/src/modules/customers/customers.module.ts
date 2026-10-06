@@ -3,8 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { CUSTOMER_PORTS } from './application/ports/customer.ports'
 import {
   CreateCustomer,
+  GetActivityTrend,
+  GetCustomerHealth,
   GetCustomerKpis,
   GetSpendByCountry,
+  GetTopCustomers,
   ImportCustomers,
   ListCountries,
   ListCustomers,
@@ -22,6 +25,9 @@ import { CustomerOrmEntity } from '../../shared/infrastructure/persistence/custo
     CreateCustomer,
     ImportCustomers,
     GetCustomerKpis,
+    GetActivityTrend,
+    GetCustomerHealth,
+    GetTopCustomers,
     ListCountries,
     GetSpendByCountry,
     { provide: CUSTOMER_PORTS.repository, useClass: TypeOrmCustomerRepository },

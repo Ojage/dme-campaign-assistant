@@ -4,6 +4,7 @@ import { SEGMENT_PORTS } from './application/ports/segment.ports'
 import {
   CreateSegment,
   DeleteSegment,
+  GetSegmentSummary,
   ListSegments,
   PreviewSegment,
 } from './application/use-cases/segment.use-cases'
@@ -23,6 +24,7 @@ import { SegmentOrmEntity } from '../../shared/infrastructure/persistence/segmen
     CreateSegment,
     DeleteSegment,
     PreviewSegment,
+    GetSegmentSummary,
     { provide: SEGMENT_PORTS.repository, useClass: TypeOrmSegmentRepository },
     { provide: SEGMENT_PORTS.audienceCounter, useClass: TypeOrmAudienceCounter },
   ],

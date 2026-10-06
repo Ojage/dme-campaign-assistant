@@ -100,7 +100,7 @@ export const activityTrendPointSchema = z.object({
 export type ActivityTrendPoint = z.infer<typeof activityTrendPointSchema>
 
 export const activityTrendQuerySchema = z.object({
-  months: z.number().int().min(3).max(24).default(6),
+  months: z.coerce.number().int().min(3).max(24).default(6),
 })
 export type ActivityTrendQuery = z.infer<typeof activityTrendQuerySchema>
 
@@ -141,7 +141,7 @@ export const customerTopListSchema = z.object({
 export type CustomerTopList = z.infer<typeof customerTopListSchema>
 
 export const topCustomersQuerySchema = z.object({
-  limit: z.number().int().min(1).max(25).default(5),
+  limit: z.coerce.number().int().min(1).max(25).default(5),
 })
 export type TopCustomersQuery = z.infer<typeof topCustomersQuerySchema>
 
