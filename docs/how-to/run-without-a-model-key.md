@@ -4,9 +4,10 @@ Goal: develop, test and demo with no model key set at all.
 
 ## What happens
 
-The API resolves its provider at boot. With no `ANTHROPIC_API_KEY` and no
-`OPENCODE_API_KEY`, it selects a deterministic local generator and logs that. Every
-endpoint behaves the same way; only the wording of generated content differs.
+The API resolves its provider at boot. With no `OPENCODE_API_KEY`, no
+`GEMINI_API_KEY` and no `ANTHROPIC_API_KEY`, it selects a deterministic local
+generator and logs that. Every endpoint behaves the same way; only the wording of
+generated content differs.
 
 `MODEL_PROVIDER=scripted` forces this even when a key is present, which is how a
 CI run stays reproducible.

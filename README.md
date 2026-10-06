@@ -40,7 +40,7 @@ questions and only work when kept apart. Start at **[docs/README.md](docs/README
 | | |
 | --- | --- |
 | [Tutorial](docs/tutorials/first-campaign.md) | From nothing to a drafted campaign. Learning-oriented. |
-| [How-to](docs/how-to/) | Add a customer, build a segment, generate a campaign, add an endpoint. |
+| [How-to](docs/how-to/) | Add a customer, build a segment, generate a campaign, add an endpoint, add an LLM provider. |
 | [Reference](docs/reference/api.md) | [API](docs/reference/api.md) · [configuration](docs/reference/configuration.md) · [scripts](docs/reference/scripts.md) · [errors](docs/reference/errors.md) |
 | [Explanation](docs/explanation/architecture.md) | [Architecture](docs/explanation/architecture.md) · [contracts](docs/explanation/contracts.md) · [versioning](docs/explanation/api-versioning.md) · [auth](docs/explanation/authentication.md) · [state](docs/explanation/state.md) · [generation](docs/explanation/generative-pipeline.md) |
 
@@ -84,11 +84,11 @@ Conventions the codebase holds to:
 
 ## Without a model key
 
-`ANTHROPIC_API_KEY` and `OPENCODE_API_KEY` are both optional, and neither is
-required: with no key the API uses a deterministic local generator that implements
-the same port, so the whole application — including streaming chat — works offline
-and in tests. The provider and model actually in use are logged at boot; set
-`MODEL_PROVIDER` to pin one explicitly. See
+`OPENCODE_API_KEY`, `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` are all optional, and
+none is required: with no key the API uses a deterministic local generator that
+implements the same port, so the whole application — including streaming chat —
+works offline and in tests. The provider and model actually in use are logged at
+boot; set `MODEL_PROVIDER` to pin one explicitly. See
 [run without a model key](docs/how-to/run-without-a-model-key.md).
 
 ## Requirements

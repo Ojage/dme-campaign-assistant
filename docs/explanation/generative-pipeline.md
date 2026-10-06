@@ -8,29 +8,33 @@ piece sits where it does.
 ```
 UI  →  API controller  →  use case  →  LlmPort  →  adapter  →  provider
                              ↑                          ↓
-                      ports: segments, campaigns  Scripted | Anthropic | OpenCode
+                      ports: segments, campaigns  Scripted | Anthropic | Gemini | OpenCode
 ```
 
 A use case assembles the prompt from data it already owns — the objective, the
 segment name, the audience size, the channel, the tone — and hands the assembled
 request to a port. It never learns which provider is behind it.
 
-## Three adapters, one port
-
-**`AnthropicModel`** calls Anthropic on its native `/messages` route. Selected
-when `ANTHROPIC_API_KEY` is set.
+## Four adapters, one port
 
 **`OpenCodeModel`** calls an OpenAI-compatible `/chat/completions` route — OpenCode
 Zen by default, and any compatible gateway through `OPENCODE_BASE_URL`. Selected
-when `OPENCODE_API_KEY` is set and Anthropic is not. Its streaming is framed as SSE
-and its structured output is re-validated against the zod schema after the call,
-because the gateway is asked to constrain the shape but is not trusted to have done
-so.
+when `OPENCODE_API_KEY` is set. Its streaming is framed as SSE and its structured
+output is re-validated against the zod schema after the call, because the gateway
+is asked to constrain the shape but is not trusted to have done so.
+
+**`GeminiModel`** hits the same OpenAI-compatible route as OpenCode Zen, on
+Gemini's gateway (`GEMINI_BASE_URL`), sharing the client that owns the wire
+format. Selected when `OPENCODE_API_KEY` is empty and `GEMINI_API_KEY` is set.
+
+**`AnthropicModel`** calls Anthropic on its native `/messages` route. Selected
+only when neither of the OpenAI-compatible providers above has a key and
+`ANTHROPIC_API_KEY` is set.
 
 **`ScriptedModel`** builds a deterministic reply locally, with no network and no
 cost. It is selected when no key is configured, and the boot log says so.
 
-`MODEL_PROVIDER` chooses explicitly, or `auto` walks the three in that order.
+`MODEL_PROVIDER` chooses explicitly, or `auto` walks the four in that order.
 Naming a provider whose key is missing resolves to `scripted` and logs the
 mismatch, rather than binding an adapter that would fail on every call.
 
@@ -79,7 +83,8 @@ The API configures body parsing explicitly so this route is not buffered, and
 A provider call is the slowest and least predictable thing in the request, so it is
 bounded and repeated rather than left to hang.
 
-Each attempt has a deadline (`ANTHROPIC_TIMEOUT_MS`, `OPENCODE_TIMEOUT_MS`). Only a
+Each attempt has a deadline (`ANTHROPIC_TIMEOUT_MS`, `GEMINI_TIMEOUT_MS`,
+`OPENCODE_TIMEOUT_MS`). Only a
 transient failure is retried — a dropped connection, `429`, `5xx`, or a timeout —
 because repeating a rejected key or a malformed request cannot make it succeed. The
 wait before each retry grows exponentially and is randomised across `0`–`delay`,

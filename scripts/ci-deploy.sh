@@ -49,10 +49,10 @@ fi
 # provider has no key — a tempting silent default locally, but a 503-shaped
 # brick in production. This deploy refuses to ship a stack that cannot talk to a
 # real model.
-if grep -Eq '^(ANTHROPIC_API_KEY|OPENCODE_API_KEY)=\S+' .env; then
+if grep -Eq '^(ANTHROPIC_API_KEY|OPENCODE_API_KEY|GEMINI_API_KEY)=\S+' .env; then
   : # at least one provider key is present
 else
-  echo "ERROR: .env must set ANTHROPIC_API_KEY or OPENCODE_API_KEY. Without one, generation would silently use the offline scripted generator." >&2
+  echo "ERROR: .env must set ANTHROPIC_API_KEY, OPENCODE_API_KEY or GEMINI_API_KEY. Without one, generation would silently use the offline scripted generator." >&2
   exit 1
 fi
 

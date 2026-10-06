@@ -35,13 +35,22 @@ export const envSchema = z.object({
   ANTHROPIC_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
   ANTHROPIC_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 
-  // `auto` prefers Anthropic, then OpenCode Zen, then the offline generator.
-  MODEL_PROVIDER: z.enum(['auto', 'anthropic', 'opencode', 'scripted']).default('auto'),
+  // `auto` prefers OpenCode Zen, then Gemini, then Anthropic, then the offline
+  // generator (cost order for the configured keys).
+  MODEL_PROVIDER: z.enum(['auto', 'opencode', 'gemini', 'anthropic', 'scripted']).default('auto'),
   OPENCODE_API_KEY: z.string().default(''),
   OPENCODE_BASE_URL: z.string().default('https://opencode.ai/zen/v1'),
   OPENCODE_MODEL: z.string().default('glm-5.2'),
   OPENCODE_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
   OPENCODE_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+
+  GEMINI_API_KEY: z.string().default(''),
+  // Gemini's OpenAI-compatible gateway: same /chat/completions format as the
+  // OpenCode route, so one client serves both.
+  GEMINI_BASE_URL: z.string().default('https://generativelanguage.googleapis.com/v1beta/openai'),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
+  GEMINI_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 
   /**
    * Retry budget for transient provider faults, shared by every adapter.
@@ -101,6 +110,15 @@ export interface AppConfig {
     readonly timeoutMs: number
     readonly enabled: boolean
   }
+  readonly gemini: {
+    readonly apiKey: string
+    /** Root of the OpenAI-compatible gateway; `/chat/completions` is appended. */
+    readonly baseUrl: string
+    readonly model: string
+    readonly maxTokens: number
+    readonly timeoutMs: number
+    readonly enabled: boolean
+  }
   /**
    * Retry budget for transient provider faults.
    *
@@ -123,21 +141,23 @@ export interface AppConfig {
 /**
  * Decides which adapter the ports receive.
  *
- * `auto` walks the providers in cost order — Anthropic, then OpenCode Zen, then
- * the offline generator — so adding a key is the only step needed to change models.
- * An explicit request for a provider whose key is missing resolves to `scripted`
- * rather than binding an adapter that would throw on every call; the mismatch is
- * reported at boot by `describeLlmMode`.
+ * `auto` walks the providers in cost order — OpenCode Zen, then Gemini, then
+ * Anthropic, then the offline generator — so adding a key is the only step needed
+ * to change models. An explicit request for a provider whose key is missing
+ * resolves to `scripted` rather than binding an adapter that would throw on every
+ * call; the mismatch is reported at boot by `describeLlmMode`.
  */
 export function resolveModelProvider(env: Env): ResolvedModelProvider {
   if (env.MODEL_PROVIDER !== 'auto') {
     const requested: ResolvedModelProvider = env.MODEL_PROVIDER
-    if (requested === 'anthropic' && env.ANTHROPIC_API_KEY.length === 0) return 'scripted'
     if (requested === 'opencode' && env.OPENCODE_API_KEY.length === 0) return 'scripted'
+    if (requested === 'gemini' && env.GEMINI_API_KEY.length === 0) return 'scripted'
+    if (requested === 'anthropic' && env.ANTHROPIC_API_KEY.length === 0) return 'scripted'
     return requested
   }
-  if (env.ANTHROPIC_API_KEY.length > 0) return 'anthropic'
   if (env.OPENCODE_API_KEY.length > 0) return 'opencode'
+  if (env.GEMINI_API_KEY.length > 0) return 'gemini'
+  if (env.ANTHROPIC_API_KEY.length > 0) return 'anthropic'
   return 'scripted'
 }
 
@@ -178,6 +198,14 @@ export function toAppConfig(env: Env): AppConfig {
       maxTokens: env.OPENCODE_MAX_TOKENS,
       timeoutMs: env.OPENCODE_TIMEOUT_MS,
       enabled: env.OPENCODE_API_KEY.length > 0,
+    },
+    gemini: {
+      apiKey: env.GEMINI_API_KEY,
+      baseUrl: env.GEMINI_BASE_URL.replace(/\/+$/, ''),
+      model: env.GEMINI_MODEL,
+      maxTokens: env.GEMINI_MAX_TOKENS,
+      timeoutMs: env.GEMINI_TIMEOUT_MS,
+      enabled: env.GEMINI_API_KEY.length > 0,
     },
     retry: {
       maxAttempts: env.LLM_RETRY_MAX_ATTEMPTS,

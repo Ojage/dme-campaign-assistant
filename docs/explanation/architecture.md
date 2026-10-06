@@ -78,14 +78,17 @@ place that cannot explain it.
 ## Why the model runs server-side
 
 The browser cannot hold a provider key, and a prompt is business logic that
-belongs under version control. The API owns a model port with three
-implementations: the Anthropic adapter, the OpenCode Zen adapter, and a
-deterministic local generator. One decision made at boot binds either port, so
-tests and development are offline and repeatable while production gets a hosted
-model. Which adapter is bound comes from configuration alone — adding a key is the
+belongs under version control. The API owns a model port with four
+implementations: the Anthropic adapter, the Gemini adapter, the OpenCode Zen
+adapter, and a deterministic local generator. One decision made at boot binds
+either port, so tests and development are offline and repeatable while production
+gets a hosted model. Which adapter is bound comes from configuration alone —
+adding a key is the
 only step needed to change models.
 
-See [the generative pipeline](generative-pipeline.md).
+See [the generative pipeline](generative-pipeline.md), and
+[add an LLM provider](../how-to/add-an-llm-provider.md) for the steps a new
+provider follows.
 
 ## Why state is split between Zustand and TanStack Query
 

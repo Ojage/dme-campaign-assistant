@@ -54,7 +54,8 @@ review.
   name its audience does not have.
 - **The tone and channel reach the prompt.** They are instructions to the model,
   not a formatting pass applied afterwards.
-- **Without `ANTHROPIC_API_KEY` the API still works**, using a deterministic local
+- **Without any provider key (`OPENCODE_API_KEY`, `GEMINI_API_KEY` or
+  `ANTHROPIC_API_KEY`) the API still works**, using a deterministic local
   generator. The shape of the response is identical, which keeps development and
   tests offline — but the prose is templated, not written. See
   [run without a model key](../how-to/run-without-a-model-key.md).

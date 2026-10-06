@@ -13,14 +13,17 @@ import type {
   StructuredModel,
 } from '../../application/ports/structured-model.port'
 
-/** The slice of `AppConfig['opencode']` the gateway needs. */
-export interface OpenCodeGatewaySettings {
+/** The slice of `AppConfig` an OpenAI-compatible provider needs. */
+export interface OpenAiCompatibleSettings {
   readonly apiKey: string
+  /** Root of the gateway; the client appends `/chat/completions`. */
   readonly baseUrl: string
   readonly model: string
   readonly maxTokens: number
   /** Ceiling on one provider call. */
   readonly timeoutMs: number
+  /** Provider name used in log lines, e.g. `OpenCode Zen` or `Gemini`. */
+  readonly label: string
 }
 
 /** The one thing this needs from Nest's logger, kept as an interface so the module stays framework-free. */
@@ -29,38 +32,40 @@ export interface LogSink {
 }
 
 /**
- * OpenCode Zen, over its OpenAI-compatible `/chat/completions` route.
+ * Any OpenAI-compatible `/chat/completions` gateway.
  *
- * Zen fronts several vendors behind one key, and the model id decides which route
- * is live — GPT and Grok live under `/responses`, Claude and Qwen under `/messages`.
- * This targets `/chat/completions` only, because that family is the widest (GLM,
- * Kimi, DeepSeek, MiniMax, Qwen Max) and because its `response_format` and SSE
- * framing are the ones this codebase can rely on uniformly. `baseUrl` therefore
- * stays configurable: any other OpenAI-compatible gateway works unchanged.
+ * OpenCode Zen fronts several vendors behind one key and exposes this route (GLM,
+ * Kimi, DeepSeek, MiniMax, Qwen Max), and Gemini exposes the same route at
+ * `/v1beta/openai`, so a single client serves both — `baseUrl` and `label` are the
+ * only differences. This keeps `response_format` and SSE framing uniform across
+ * adapters instead of re-implementing the wire format per provider.
  *
  * `fetch` is used directly rather than an SDK, so the gateway needs no new
  * dependency, and the caller's `AbortSignal` can be passed straight through — a
  * client closing the chat stream really does cancel the upstream request.
  *
  * This holds no Nest decorator and imports nothing from the framework, so the wire
- * format and the error mapping can be tested directly; `OpenCodeModelAdapter` is
- * only the injectable shell around it.
+ * format and the error mapping can be tested directly; adapters
+ * (`OpenCodeModelAdapter`, `GeminiModelAdapter`) are only the injectable shells
+ * around it.
  */
-export class OpenCodeGatewayClient implements TextModel, StructuredModel {
+export class OpenAiCompatibleClient implements TextModel, StructuredModel {
   public readonly modelId: string
   readonly #endpoint: string
   readonly #apiKey: string
   readonly #maxTokens: number
   readonly #timeoutMs: number
   readonly #log: LogSink
+  readonly #label: string
 
-  public constructor(settings: OpenCodeGatewaySettings, log: LogSink) {
+  public constructor(settings: OpenAiCompatibleSettings, log: LogSink) {
     this.#endpoint = `${settings.baseUrl}/chat/completions`
     this.#apiKey = settings.apiKey
     this.modelId = settings.model
     this.#maxTokens = settings.maxTokens
     this.#timeoutMs = settings.timeoutMs
     this.#log = log
+    this.#label = settings.label
   }
 
   public async generate(request: TextGenerationRequest): Promise<TextGenerationResult> {
@@ -126,7 +131,7 @@ export class OpenCodeGatewayClient implements TextModel, StructuredModel {
     const parsedJson = parseJson(readContent(body))
     const parsed = request.schema.safeParse(parsedJson)
     if (!parsed.success) {
-      this.#log.error(`OpenCode returned JSON that does not satisfy the schema: ${parsed.error.message}`)
+      this.#log.error(`${this.#label} returned JSON that does not satisfy the schema: ${parsed.error.message}`)
       throw new ModelProviderError('The content model returned a malformed response.', 'llm_error')
     }
     return { data: parsed.data as z.output<TSchema>, model: readModel(body, this.modelId) }
@@ -180,7 +185,9 @@ export class OpenCodeGatewayClient implements TextModel, StructuredModel {
    */
   #toDomainError(status: number | undefined, body?: string, cause?: unknown): ModelProviderError {
     if (cause instanceof ModelProviderError) return cause
-    this.#log.error(`OpenCode request failed: ${body === undefined ? String(cause) : `HTTP ${String(status)} ${body.slice(0, 300)}`}`)
+    this.#log.error(
+      `${this.#label} request failed: ${body === undefined ? String(cause) : `HTTP ${String(status)} ${body.slice(0, 300)}`}`,
+    )
 
     // A cancelled request is the caller's doing, not an outage, so it must not be
     // reported as retryable.

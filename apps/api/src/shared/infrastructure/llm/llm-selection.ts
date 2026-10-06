@@ -13,8 +13,9 @@ import { RetryingModel } from './retrying-model'
 
 /** The adapters `LlmModule` can bind. Each satisfies both ports. */
 export interface AdapterSet {
-  readonly anthropic: TextModel & StructuredModel
   readonly opencode: TextModel & StructuredModel
+  readonly gemini: TextModel & StructuredModel
+  readonly anthropic: TextModel & StructuredModel
   readonly scripted: TextModel & StructuredModel
 }
 
@@ -36,13 +37,23 @@ export const SELECTED_MODEL = Symbol('SELECTED_MODEL')
 export function selectAdapters(config: AppConfig, adapters: AdapterSet): TextModel & StructuredModel {
   const policy = defaultRetryPolicy(config.retry)
   switch (config.modelProvider) {
-    case 'anthropic':
-      return new RetryingModel(adapters.anthropic, policy)
     case 'opencode':
       return new RetryingModel(adapters.opencode, policy)
+    case 'gemini':
+      return new RetryingModel(adapters.gemini, policy)
+    case 'anthropic':
+      return new RetryingModel(adapters.anthropic, policy)
     case 'scripted':
       return new RetryingModel(adapters.scripted, policy)
   }
+}
+
+/** Maps a provider to the env variable that enables it, for mismatch reporting. */
+const PROVIDER_KEY: Record<ResolvedModelProvider, string> = {
+  opencode: 'OPENCODE_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+  scripted: 'scripted',
 }
 
 /**
@@ -55,21 +66,22 @@ export function selectAdapters(config: AppConfig, adapters: AdapterSet): TextMod
 export function describeLlmMode(config: AppConfig): string {
   const live = describeProvider(config.modelProvider, config)
   if (config.requestedModelProvider !== 'auto' && config.requestedModelProvider !== config.modelProvider) {
-    const needed = config.requestedModelProvider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENCODE_API_KEY'
-    return `${live} — MODEL_PROVIDER=${config.requestedModelProvider} was requested but ${needed} is not set`
+    return `${live} — MODEL_PROVIDER=${config.requestedModelProvider} was requested but ${PROVIDER_KEY[config.requestedModelProvider]} is not set`
   }
   if (config.modelProvider === 'scripted') {
-    return `${live} — set ANTHROPIC_API_KEY or OPENCODE_API_KEY to enable a hosted model`
+    return `${live} — set OPENCODE_API_KEY, GEMINI_API_KEY or ANTHROPIC_API_KEY to enable a hosted model`
   }
   return live
 }
 
 function describeProvider(provider: ResolvedModelProvider, config: AppConfig): string {
   switch (provider) {
-    case 'anthropic':
-      return `Anthropic (${config.anthropic.model})`
     case 'opencode':
       return `OpenCode Zen (${config.opencode.model} via ${config.opencode.baseUrl})`
+    case 'gemini':
+      return `Gemini (${config.gemini.model} via ${config.gemini.baseUrl})`
+    case 'anthropic':
+      return `Anthropic (${config.anthropic.model})`
     case 'scripted':
       return 'scripted local model'
   }

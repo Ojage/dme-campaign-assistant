@@ -4,6 +4,7 @@ import type { AppConfig } from '../../../config/env'
 import { STRUCTURED_MODEL } from '../../application/ports/structured-model.port'
 import { TEXT_MODEL } from '../../application/ports/text-model.port'
 import { AnthropicModelAdapter } from './anthropic-model.adapter'
+import { GeminiModelAdapter } from './gemini-model.adapter'
 import { selectAdapters, SELECTED_MODEL } from './llm-selection'
 import { OpenCodeModelAdapter } from './opencode-model.adapter'
 import { ScriptedModelAdapter } from './scripted-model.adapter'
@@ -20,16 +21,18 @@ import { ScriptedModelAdapter } from './scripted-model.adapter'
   providers: [
     AnthropicModelAdapter,
     OpenCodeModelAdapter,
+    GeminiModelAdapter,
     ScriptedModelAdapter,
     {
       provide: SELECTED_MODEL,
-      inject: [ENV, AnthropicModelAdapter, OpenCodeModelAdapter, ScriptedModelAdapter],
+      inject: [ENV, AnthropicModelAdapter, OpenCodeModelAdapter, GeminiModelAdapter, ScriptedModelAdapter],
       useFactory: (
         config: AppConfig,
         anthropic: AnthropicModelAdapter,
         opencode: OpenCodeModelAdapter,
+        gemini: GeminiModelAdapter,
         scripted: ScriptedModelAdapter,
-      ) => selectAdapters(config, { anthropic, opencode, scripted }),
+      ) => selectAdapters(config, { anthropic, opencode, gemini, scripted }),
     },
     // Aliased rather than built twice, so both ports hold the same adapter object
     // and therefore the same retry state.

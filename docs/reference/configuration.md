@@ -46,14 +46,18 @@ most once. See [sessions](../explanation/authentication.md).
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `MODEL_PROVIDER` | `auto` | `auto`, `anthropic`, `opencode` or `scripted`. `auto` takes the first provider whose key is set, in that order. |
-| `ANTHROPIC_API_KEY` | empty | Key for Anthropic. Empty rules the provider out. |
-| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Model identifier for generation. `claude-sonnet-4-5` was deprecated on 2026-09-30. |
-| `ANTHROPIC_MAX_TOKENS` | `1024` | Upper bound on a single generation. |
+| `MODEL_PROVIDER` | `auto` | `auto`, `opencode`, `gemini`, `anthropic` or `scripted`. `auto` takes the first provider whose key is set, in that order. |
 | `OPENCODE_API_KEY` | empty | Key for OpenCode Zen. Empty rules the provider out. |
 | `OPENCODE_BASE_URL` | `https://opencode.ai/zen/v1` | Gateway root; `/chat/completions` is appended. Point it at any OpenAI-compatible gateway. |
 | `OPENCODE_MODEL` | `glm-5.2` | Model identifier. Only the `/chat/completions` family is supported. |
 | `OPENCODE_MAX_TOKENS` | `1024` | Upper bound on a single generation. |
+| `GEMINI_API_KEY` | empty | Key for Google Gemini. Empty rules the provider out. |
+| `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` | Gemini's OpenAI-compatible gateway root; `/chat/completions` is appended. |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Model identifier for generation. |
+| `GEMINI_MAX_TOKENS` | `1024` | Upper bound on a single generation. |
+| `ANTHROPIC_API_KEY` | empty | Key for Anthropic. Empty rules the provider out. |
+| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Model identifier for generation. `claude-sonnet-4-5` was deprecated on 2026-09-30. |
+| `ANTHROPIC_MAX_TOKENS` | `1024` | Upper bound on a single generation. |
 
 ### Timeouts and retries
 
@@ -63,6 +67,7 @@ repeated rather than left to hang.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `ANTHROPIC_TIMEOUT_MS` | `60000` | Deadline for one Anthropic call. |
+| `GEMINI_TIMEOUT_MS` | `60000` | Deadline for one Gemini call. |
 | `OPENCODE_TIMEOUT_MS` | `60000` | Deadline for one OpenCode call. |
 | `LLM_RETRY_MAX_ATTEMPTS` | `3` | Total attempts per call, so `3` means one try and two retries. Between 1 and 5. |
 | `LLM_RETRY_BASE_DELAY_MS` | `250` | First wait before retrying. |

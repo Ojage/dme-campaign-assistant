@@ -30,7 +30,12 @@ function configFor(overrides: Record<string, string> = {}): AppConfig {
  */
 function adapters(): AdapterSet {
   const make = (modelId: string) => ({ modelId }) as unknown as AdapterSet['opencode']
-  return { anthropic: make('claude-sonnet-4-5'), opencode: make('glm-5.2'), scripted: make('scripted-local') }
+  return {
+    anthropic: make('claude-sonnet-4-5'),
+    opencode: make('glm-5.2'),
+    gemini: make('gemini-2.5-flash'),
+    scripted: make('scripted-local'),
+  }
 }
 
 describe('selectAdapters', () => {
@@ -38,6 +43,9 @@ describe('selectAdapters', () => {
     const set = adapters()
     expect(selectAdapters(configFor({ MODEL_PROVIDER: 'opencode', OPENCODE_API_KEY: 'sk-zen' }), set).modelId).toBe(
       'glm-5.2',
+    )
+    expect(selectAdapters(configFor({ MODEL_PROVIDER: 'gemini', GEMINI_API_KEY: 'sk-gem' }), set).modelId).toBe(
+      'gemini-2.5-flash',
     )
     expect(
       selectAdapters(configFor({ MODEL_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'sk-ant' }), set).modelId,
@@ -58,21 +66,27 @@ describe('selectAdapters', () => {
 
 describe('describeLlmMode', () => {
   it('names the provider and model that will answer', () => {
-    expect(describeLlmMode(configFor({ ANTHROPIC_API_KEY: 'sk-ant' }))).toBe('Anthropic (claude-sonnet-5-5)')
     expect(describeLlmMode(configFor({ OPENCODE_API_KEY: 'sk-zen' }))).toBe(
       'OpenCode Zen (glm-5.2 via https://opencode.ai/zen/v1)',
     )
+    expect(describeLlmMode(configFor({ GEMINI_API_KEY: 'sk-gem' }))).toBe(
+      'Gemini (gemini-2.5-flash via https://generativelanguage.googleapis.com/v1beta/openai)',
+    )
+    expect(describeLlmMode(configFor({ ANTHROPIC_API_KEY: 'sk-ant' }))).toBe('Anthropic (claude-sonnet-5-5)')
   })
 
   it('points at the missing key when the requested provider has none', () => {
     expect(describeLlmMode(configFor({ MODEL_PROVIDER: 'opencode', OPENCODE_API_KEY: '' }))).toBe(
       'scripted local model — MODEL_PROVIDER=opencode was requested but OPENCODE_API_KEY is not set',
     )
+    expect(describeLlmMode(configFor({ MODEL_PROVIDER: 'gemini', GEMINI_API_KEY: '' }))).toBe(
+      'scripted local model — MODEL_PROVIDER=gemini was requested but GEMINI_API_KEY is not set',
+    )
   })
 
   it('suggests a key when nothing is configured at all', () => {
     expect(describeLlmMode(configFor())).toBe(
-      'scripted local model — set ANTHROPIC_API_KEY or OPENCODE_API_KEY to enable a hosted model',
+      'scripted local model — set OPENCODE_API_KEY, GEMINI_API_KEY or ANTHROPIC_API_KEY to enable a hosted model',
     )
   })
 

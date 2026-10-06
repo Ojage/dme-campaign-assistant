@@ -2,7 +2,7 @@ import * as z from 'zod/v4'
 import { envSchema, toAppConfig } from '../../../config/env'
 import type { AppConfig } from '../../../config/env'
 import { ModelProviderError } from '../../domain/domain.errors'
-import { OpenCodeGatewayClient } from './opencode-gateway.client'
+import { OpenAiCompatibleClient } from './openai-compatible.client'
 
 /**
  * This client is the only place that knows the gateway's wire format, so these
@@ -33,9 +33,9 @@ const REQUEST = {
  * The client is built directly rather than through the adapter, because the client
  * is where the behaviour is and it needs no Nest container to run.
  */
-function adapter(overrides: Record<string, unknown> = {}): OpenCodeGatewayClient {
+function adapter(overrides: Record<string, unknown> = {}): OpenAiCompatibleClient {
   const { enabled: _enabled, ...settings } = configFor(overrides).opencode
-  return new OpenCodeGatewayClient(settings, { error: () => undefined })
+  return new OpenAiCompatibleClient({ ...settings, label: 'OpenCode Zen' }, { error: () => undefined })
 }
 
 /** Either a ready response or a handler that builds one from the outgoing request. */
@@ -384,5 +384,33 @@ describe('a custom gateway', () => {
     await adapter({ OPENCODE_MODEL: 'kimi-k2.5' }).generate(REQUEST)
 
     expect(JSON.parse((fetchMock.mock.calls[0] as [string, RequestInit])[1].body as string).model).toBe('kimi-k2.5')
+  })
+})
+
+describe('the same client for Gemini', () => {
+  function geminiClient(): OpenAiCompatibleClient {
+    const { enabled: _enabled, ...settings } = configFor({ GEMINI_API_KEY: 'sk-gem' }).gemini
+    return new OpenAiCompatibleClient({ ...settings, label: 'Gemini' }, { error: () => undefined })
+  }
+
+  it('targets Gemini\'s OpenAI-compatible gateway', async () => {
+    const fetchMock = stubFetch(jsonResponse({ choices: [{ message: { content: 'Hi' } }] }))
+
+    await geminiClient().generate(REQUEST)
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions')
+    expect(new Headers(init.headers).get('authorization')).toBe('Bearer sk-gem')
+  })
+
+  it('names the provider in the failure log line', async () => {
+    const errors: string[] = []
+    const { enabled: _enabled, ...settings } = configFor({ GEMINI_API_KEY: 'sk-gem' }).gemini
+    const client = new OpenAiCompatibleClient({ ...settings, label: 'Gemini' }, { error: (m) => errors.push(m) })
+    stubFetch(jsonResponse({ error: 'boom' }, 503))
+
+    await client.generate(REQUEST).catch(() => undefined)
+
+    expect(errors[0]).toContain('Gemini request failed')
   })
 })

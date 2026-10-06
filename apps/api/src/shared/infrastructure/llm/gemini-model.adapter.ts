@@ -15,19 +15,19 @@ import type {
 import { OpenAiCompatibleClient } from './openai-compatible.client'
 
 /**
- * Injectable shell around `OpenAiCompatibleClient`.
+ * Injectable shell around `OpenAiCompatibleClient`, pointed at Gemini.
  *
- * The shell exists only so Nest can build the client from configuration; every
- * behaviour lives in the client, which imports no framework code and is therefore
- * testable without booting Nest. Both ports are satisfied by the same object, so
- * chat text, campaign structure and streaming all come from one provider.
+ * Gemini exposes the same OpenAI-compatible `/chat/completions` route as OpenCode
+ * Zen, so the shared client carries the wire format and `GEMINI_BASE_URL` decides
+ * which gateway it lands on. Like its sibling, this shell exists only so Nest can
+ * build the client from configuration; both ports are satisfied by the same object.
  */
 @Injectable()
-export class OpenCodeModelAdapter implements TextModel, StructuredModel {
+export class GeminiModelAdapter implements TextModel, StructuredModel {
   readonly #client: OpenAiCompatibleClient
 
   public constructor(@Inject(ENV) config: AppConfig) {
-    this.#client = new OpenAiCompatibleClient({ ...config.opencode, label: 'OpenCode Zen' }, new Logger(OpenCodeModelAdapter.name))
+    this.#client = new OpenAiCompatibleClient({ ...config.gemini, label: 'Gemini' }, new Logger(GeminiModelAdapter.name))
   }
 
   public get modelId(): string {
