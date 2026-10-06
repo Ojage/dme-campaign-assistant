@@ -15,8 +15,6 @@ export default {
   submittingHint: 'Checking your credentials…',
   forgotPassword: 'Forgot your password?',
   forgotPasswordHint: 'Contact your workspace administrator to reset access.',
-  demoTitle: 'Demo access',
-  demoHint: 'Use {{email}} with the password {{password}}, or any of the seeded accounts.',
   errors: {
     userNotFound: 'No account matches that email address.',
     invalidCredentials: 'That email and password combination is incorrect.',

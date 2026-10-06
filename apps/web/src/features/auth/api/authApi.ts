@@ -15,9 +15,6 @@ import { apiClient } from '@/lib/api/apiClient'
 /** Matches the server-side rule in `PlainPassword`. */
 export const MIN_PASSWORD_LENGTH = 8
 
-/** Surfaced as a hint on the login screen. */
-export const demoAccount = { email: 'aicha.njoya@dme.cm', password: 'campaigns' }
-
 export async function signInRequest(credentials: SignInCredentials): Promise<{
   user: SessionUser
   accessToken: string

@@ -38,7 +38,7 @@ export function EmailFrame({ campaign }: FrameProps) {
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-foreground">DME Cameroon</p>
             <p className="truncate text-xs text-muted-foreground">
-              {t('preview.email.toLabel')} aicha.njoya@dme.cm
+              {t('preview.email.toLabel')} client@dme.cm
             </p>
           </div>
           <span className="shrink-0 text-[11px] text-muted-foreground">

@@ -15,8 +15,6 @@ export default {
   submittingHint: 'Vérification de vos identifiants…',
   forgotPassword: 'Mot de passe oublié ?',
   forgotPasswordHint: 'Contactez l’administrateur de l’espace de travail pour réinitialiser l’accès.',
-  demoTitle: 'Accès de démonstration',
-  demoHint: 'Utilisez {{email}} avec le mot de passe {{password}}, ou l’un des comptes préchargés.',
   errors: {
     userNotFound: 'Aucun compte ne correspond à cette adresse e-mail.',
     invalidCredentials: 'Cette combinaison e-mail / mot de passe est incorrecte.',

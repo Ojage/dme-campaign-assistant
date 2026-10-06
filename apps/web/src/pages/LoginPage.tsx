@@ -5,7 +5,7 @@ import { Button } from '@/components/common/Button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { AuthShell } from '@/features/auth/components/AuthShell'
-import { demoAccount, MIN_PASSWORD_LENGTH } from '@/features/auth/api/authApi'
+import { MIN_PASSWORD_LENGTH } from '@/features/auth/api/authApi'
 import { useSignIn } from '@/features/auth/hooks/useSignIn'
 
 /**
@@ -16,8 +16,6 @@ export default function LoginPage() {
   const { t } = useTranslation('auth')
   const { values, setField, fieldErrors, formError, isSubmitting, submit } = useSignIn()
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-
-  const demo = demoAccount
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -128,17 +126,6 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
-
-        {/* Demo credentials — the mock service accepts only these two accounts */}
-        <div className="mt-5 w-full rounded-xl border border-dashed border-border bg-card/60 px-4 py-3">
-          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
-            <Radar className="h-3 w-3" />
-            {t('demoTitle')}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {t('demoHint', { email: demo.email, password: demo.password })}
-          </p>
-        </div>
 
         <p className="mt-6 text-[11px] text-muted-foreground/70">{t('footer')}</p>
       </div>
