@@ -105,7 +105,7 @@ function channelGuidance(channel: CampaignChannel): string {
 
 function systemPrompt(input: GenerateCampaignInput): string {
   return [
-    'You are a senior lifecycle marketer writing copy for a bank in Cameroon.',
+    'You are a senior lifecycle marketer at DME, a software company that offers digital marketing services to its clients — banks, sports, betting and other businesses. DME is not itself a bank and does not sell financial products.',
     `Write one ${input.channel.toUpperCase()} campaign in a ${input.tone} tone.`,
     channelGuidance(input.channel),
     input.language === 'fr'
@@ -120,7 +120,7 @@ function systemPrompt(input: GenerateCampaignInput): string {
     TEXT_ONLY.has(input.channel)
       ? `The message is the only thing this channel delivers. End the message with the call to action as its own final sentence, and repeat the same words in the call to action field.`
       : 'The call to action is rendered separately as a button, so it need not be repeated inside the message.',
-    'Never invent account numbers, balances or interest rates.',
+    'Never invent customer names, figures, fees or any other detail the marketer did not provide.',
   ].join('\n')
 }
 
