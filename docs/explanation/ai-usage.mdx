@@ -1,0 +1,79 @@
+---
+title: AI usage
+description: Where a language model is called in this application, what it sees, what it is and is not allowed to do, and how output is kept honest.
+icon: cpu
+---
+
+The application calls a language model in exactly two places. Everything else that
+looks clever — the customer counts, the health score, the trend line, which
+customers match a segment — is computed deterministically from the database and
+never touches a model. Knowing which is which matters when you evaluate the
+product.
+
+## Where the model is called
+
+| Place | Port | Returns | Verified after the call? |
+| --- | --- | --- | --- |
+| Drafting a campaign | `StructuredModel` | Title, message, call to action | Yes — parsed against a zod schema |
+| Chat assistant reply | `TextModel` | A streamed reply | No — text is text |
+
+Both calls share the same provider — one decided at boot, retried under the same
+deadline and backoff policy. See
+[the generative pipeline](/explanation/generative-pipeline) for how that works and
+why.
+
+## What the model does not do
+
+Under no circumstances is a model asked to compute or guess any of the following:
+
+- Customer counts, health, trends or "top customers" — these are SQL aggregates.
+- Whether a customer matches a segment — that is a deterministic condition check.
+- Customer imports or any write to the database.
+- Campaign status. Drafting is the only model step; approving and sending are
+  domain rules (`draft → ready → sent`).
+
+Keeping the model out of these paths is a design decision, not an oversight: a
+probabilistic component has no place near an irreversible action or a number a
+marketer will build a decision on.
+
+## What the model sees
+
+Unusually for an AI feature, the model has **no access to the database**.
+
+- **Campaign drafting** receives the objective, segment name, audience size,
+  channel and tone. It receives labels and aggregates, never raw customer rows.
+- **Chat** receives the system prompt and the last 12 turns of the thread you
+  are in — enough context to answer, bounded so a long conversation cannot grow
+  past the model's window. Stored history stays complete.
+
+This is why the chat assistant cannot answer questions like "how many customers
+live in Douala?" on its own: it only knows what is in the conversation. Marketing
+data is answered from what the user tells it, not from a live query. See
+[client state](/explanation/state) for how the numbers themselves are produced.
+
+## Guardrails on output
+
+Drafts are the part that must be structurally correct, so they are treated that
+way:
+
+- The reply is parsed against the campaign schema. If a field is missing, the
+  adapter repairs it where it can, and refuses with `llm_error` if the reply is
+  unreadable — a malformed draft never becomes a campaign with an empty title.
+- The prompt forbids inventing figures, fees or customer details, and tells the
+  model what DME is (a software company doing marketing for its clients — not a
+  bank), so copy does not drift into the wrong persona.
+
+That is a *request*, not a fact-check. Nothing runs over the finished copy to
+verify a number against the database, so a drafted campaign can still mention an
+offer that does not exist. Every draft is produced in `draft` status and must be
+reviewed by a person before it can leave that state. See
+[generate a campaign](/how-to/generate-a-campaign).
+
+## Providers, and what happens when one is missing
+
+The provider is bound once at boot from configuration. With no key of any kind,
+the API binds the deterministic local generator (the `ScriptedModel`) — the same
+ports, the same streams, no network and no cost — so the entire application stays
+reviewable offline. The boot log states which model is in use. See
+[run without a model key](/how-to/run-without-a-model-key) and the
+[configuration reference](/reference/configuration).

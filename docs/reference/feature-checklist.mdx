@@ -1,0 +1,116 @@
+---
+title: Feature checklist
+description: The five non-negotiable features from the project brief, where each one lives in the code, and how to verify it yourself.
+icon: clipboard-check
+---
+
+The project brief defines five non-negotiable features. Each one below is mapped
+to the code that implements it and to the way you can see it working, so an
+evaluator can check the claims rather than take them on trust.
+
+For terminology used throughout, see the [glossary](/reference/glossary).
+
+## 1. Customer Dashboard with live KPIs
+
+**Where:** `apps/api/src/modules/customers`
+
+**The four required cards exist, in one contract:** the `CustomerKpi` shape
+declares `totalCustomers`, `activeCustomers`, `totalTransactionValue` and
+`averageCustomerValue`. They are real — computed as SQL aggregates over the
+customer table, not stored numbers that can go stale — and exposed as
+`GET /customers/kpis`. The dashboard also reads `GET /customers/trend`,
+`GET /customers/health` and `GET /customers/top`.
+
+**Verify it:** sign in, open the dashboard, and confirm the four cards change when
+you import customers or edit the data. All of these are deterministic
+computations — nothing here involves a language model. See
+[AI usage](/explanation/ai-usage).
+
+## 2. Customer Segmentation with condition builder
+
+**Where:** `packages/contracts/src/domains/segments` (the shared schema) and
+`apps/api/src/modules/segments`
+
+The condition builder covers exactly the four dimensions the brief names:
+
+- `country` — string equality.
+- `totalTransactions` — numeric count, compared with `gt` / `gte` / `lt` / `lte`.
+- `totalAmountSpent` — numeric, same operators.
+- `lastActivityDays` — numeric, same operators.
+
+Conditions combine freely (`AND`), and the segment shows a **live match count**
+before you save, via `POST /segments/preview` — the same matching code runs
+preview and save, so the number you saw is the number you stored.
+
+**Verify it:** build a segment with `country` + `totalAmountSpent` and watch the
+match count change as you add each condition. See
+[build a segment](/how-to/build-a-segment).
+
+## 3. Campaign creation form tied to a segment
+
+**Where:** `packages/contracts/src/domains/campaigns` and
+`apps/api/src/modules/campaigns`
+
+`generateCampaignRequestSchema` makes the linkage and the requirements
+non-negotiable at the boundary: `segmentId` (a reference to a saved segment,
+never a free-text name), `objective` (min 10 characters), `channel`
+(`sms` | `email` | `push`) and `tone` (four tones) are all required and enforced
+by the request-validation pipe before the use case runs.
+
+**Verify it:** try `POST /campaigns/generate` without a segment id, or with an
+unknown one, and observe the 400 — the API refuses before any generation happens.
+See [generate a campaign](/how-to/generate-a-campaign).
+
+## 4. AI-generated campaign output
+
+**Where:** `apps/api/src/modules/campaigns/application/use-cases/campaign.use-cases.ts`
+
+Generation asks the model for a structured payload and the use case parses it
+against the campaign schema, so every generated campaign has **title, message and
+call to action** — never an empty field. If the reply does not parse, the adapter
+repairs what it can and surfaces `llm_error` otherwise; a half-hearted draft never
+becomes a campaign.
+
+**Verify it:** generate a campaign and read the three fields back from the
+`DELETE`-able list or the campaign detail. Compare the same call with and without
+a provider key — with no key, the deterministic local generator still returns all
+three fields.
+
+## 5. Clean separation of the AI service layer
+
+**Where:** `apps/api/src/shared/infrastructure/llm/` and the port tokens in
+`apps/api/src/shared/application/ports/`
+
+This is the architectural test. The AI lives behind a port, and the boundary is
+enforced by direction of dependency:
+
+```
+controller → use case → port (token) → adapter → provider
+                              (no provider types reach this far up)
+```
+
+- **Controllers** only validate bodies and call use cases. They never import a
+  provider SDK or open a connection to a model gateway.
+- **Use cases** depend on ports — `STRUCTURED_MODEL` (campaigns) and `TEXT_MODEL`
+  (chat) — and receive them by constructor injection.
+- **Adapters** — Anthropic, Gemini, OpenCode, and the deterministic scripted
+  generator — live together in `shared/infrastructure/llm/`, and one of them is
+  bound once at boot from `MODEL_PROVIDER` plus the available keys, wrapped by a
+  retrying model.
+- **The web app** makes no model calls at all. React components call feature API
+  functions that hit the API; a provider key never exists in the browser.
+
+Reading it from the other side: if you add a new AI feature, you implement the
+port, register an adapter, and wire it in the module — you do not edit a
+controller or a React component.
+
+See [architecture](/explanation/architecture) and
+[the generative pipeline](/explanation/generative-pipeline).
+
+## How to run this yourself
+
+The full stack runs offline: `pnpm db:up`, `pnpm seed`, `pnpm dev` — sign in with
+`aicha.njoya@dme.cm` / `campaigns`. With no model key the API binds the scripted
+generator; add a key in `apps/api/.env` to switch to a hosted model. See
+[run without a model key](/how-to/run-without-a-model-key) and the
+[configuration reference](/reference/configuration).

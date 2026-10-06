@@ -105,6 +105,10 @@
           {
             "group": "Domain",
             "pages": ["reference/glossary"]
+          },
+          {
+            "group": "Evaluation",
+            "pages": ["reference/feature-checklist"]
           }
         ]
       },
@@ -121,6 +125,13 @@
               "explanation/authentication",
               "explanation/generative-pipeline",
               "explanation/state"
+            ]
+          },
+          {
+            "group": "Scope",
+            "pages": [
+              "explanation/ai-usage",
+              "explanation/assumptions-and-limitations"
             ]
           }
         ]

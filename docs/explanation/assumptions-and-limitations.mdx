@@ -1,0 +1,63 @@
+---
+title: Assumptions and limitations
+description: What this project assumes about its environment and its users, and the boundaries an evaluator should know about before judging it.
+icon: triangle-alert
+---
+
+This page is for people evaluating the project: what it takes for the assumptions
+to hold, and where the product knowingly stops.
+
+## Assumptions
+
+- **Single team, single tenant.** Campaign Assistant is an internal workspace for
+  one marketing team at DME. There is no tenant concept, no multi-org separation,
+  and no self-serve onboarding. Everyone who signs in sees the same data.
+- **The numbers are seeded, not real.** The seed script creates two accounts and
+  280 synthetic customers so segments, dashboards and campaigns have something to
+  work with. It is idempotent, so re-running it is safe. Any evaluation of the
+  analytics reads synthetic data unless you import your own via the CSV endpoint
+  first.
+- **A working environment looks like this:** Node 24, pnpm, and PostgreSQL (the
+  dev path runs it in Docker). Deployment targets a single VPS. See the
+  [deployment reference](/reference/deployment).
+- **A model is optional.** With no provider key the API runs a deterministic local
+  generator that exercises the full pipeline. Real models are an add-key-away
+  change; see [add an LLM provider](/how-to/add-an-llm-provider).
+- **The compressed domain:** a "customer" is a person with attributes and a
+  location, a "segment" is a saved set of conditions, and a campaign moves through
+  `draft → ready → sent`. Terminology and invariants are documented in the
+  [glossary](/reference/glossary).
+
+## Limitations
+
+These are boundaries the project draws deliberately, not gaps left by accident.
+
+- **Drafted copy is not fact-checked.** The model is instructed not to invent
+  figures, and its output is validated for *shape*, but nothing verifies its
+  *content* against the database. A draft can mention an offer that does not
+  exist. Mitigation: drafts never cross out of `draft` status without a person.
+  See [AI usage](/explanation/ai-usage).
+- **The chat assistant has no database access.** It answers only from the thread
+  context (the last 12 turns), so it cannot compute or look up customer metrics
+  you have not put in front of it. Send it nothing you would not paste into a
+  shared document.
+- **Provider failure is not silent.** There is no cross-provider failover: if the
+  bound provider is unreachable, the request is retried on a deadline and then
+  answered with `503`/`llm_unavailable`. You cannot receive copy from a different
+  model than the one configured, with nothing telling you.
+- **Idempotency records are never pruned.** Every `POST /campaigns/generate`
+  keeps its replayed response for its authenticated caller; storage grows with
+  use and is currently unbounded.
+- **Sessions lean on `localStorage`.** Both tokens live there by design — no
+  payment data exists to protect — and rotation bounds the blast radius. See
+  [sessions and authentication](/explanation/authentication).
+- **Schema changes require deliberate action in production.** The seed script
+  owns the schema; deployments run it, but production refuses to unless
+  `ALLOW_SCHEMA_PUSH=true`. A schema drift therefore fails loudly instead of
+  migrating a live database by surprise.
+- **Copy languages are English and French.** Campaign copy is written in one or
+  the other, never both; the UI is localised to the same two. Anything else is
+  out of scope today.
+- **Deployment is a single shared VPS.** There is no horizontal scaling, no CDN
+  in front of the app, and the API reference is served from the installed package
+  so it works on an isolated network.
