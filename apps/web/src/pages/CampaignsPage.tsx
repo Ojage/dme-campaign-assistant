@@ -30,9 +30,9 @@ export default function CampaignsPage() {
     <PageWrapper>
       <Confetti fire={burst} />
 
-      <div className="flex flex-col gap-6 p-8">
+      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6 xl:p-8">
         <PageHeader title={t('title')} description={t('description')} />
-        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
+        <div className="grid grid-cols-1 items-start gap-4 sm:gap-6 xl:grid-cols-5">
           <div className="flex flex-col gap-6 xl:col-span-3">
             <CampaignForm form={form} />
             <AnimatePresence mode="wait">

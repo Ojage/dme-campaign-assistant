@@ -8,7 +8,7 @@ import { PageSkeleton } from '@/components/common/PageSkeleton'
  */
 export function AuthBootScreen({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[hsl(var(--bar))]">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-[hsl(var(--bar))]">
       <div className="h-12 shrink-0" />
       <div className="min-h-0 flex-1 p-2 pt-1.5">
         <div className="relative h-full min-h-0 overflow-hidden rounded-2xl border border-black/10 bg-background shadow-retool-lg">

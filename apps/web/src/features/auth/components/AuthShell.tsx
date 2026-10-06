@@ -10,7 +10,7 @@ import { AuthTopBar } from '@/features/auth/components/AuthTopBar'
  */
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[hsl(var(--bar))]">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-[hsl(var(--bar))]">
       <AuthTopBar />
 
       <div className="min-h-0 flex-1 p-2 pt-1.5">

@@ -13,6 +13,7 @@ export default {
   },
   topbar: {
     team: 'Marketing team',
+    navMenu: 'Open navigation',
     theme: 'Theme',
     themeLight: 'Light',
     themeDark: 'Dark',

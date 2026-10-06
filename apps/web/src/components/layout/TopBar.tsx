@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Check, Languages, LogOut, Monitor, Moon, Radar, Search, Sparkles, Sun } from 'lucide-react'
+import { Check, Languages, LogOut, Menu, Monitor, Moon, Radar, Search, Sparkles, Sun } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,13 +27,15 @@ const LANGUAGE_OPTIONS: Array<{ value: AppLanguage; labelKey: string }> = [
 interface TopBarProps {
   onOpenSearch: () => void
   onOpenAgent: () => void
+  onToggleNav: () => void
 }
 
 /**
  * Parent bar: full-width, pinned to the top of the viewport, oxblood red.
- * Icon-only logo on the left; Agent pill, search, and avatar cluster on the right.
+ * Icon-only logo on the left (with a menu toggle below lg); Agent pill, search,
+ * and avatar cluster on the right.
  */
-export function TopBar({ onOpenSearch, onOpenAgent }: TopBarProps) {
+export function TopBar({ onOpenSearch, onOpenAgent, onToggleNav }: TopBarProps) {
   const { t } = useTranslation('common')
   const { user, signOut } = useAuth()
   const { mode, setMode } = useAppTheme()
@@ -49,20 +51,31 @@ export function TopBar({ onOpenSearch, onOpenAgent }: TopBarProps) {
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between px-4 text-[hsl(var(--bar-foreground))]">
-      {/* Logo — icon only */}
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20">
-        <Radar className="h-4 w-4 text-white" />
-      </span>
+      {/* Left cluster: mobile menu toggle · logo */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleNav}
+          aria-label={t('topbar.navMenu')}
+          aria-controls="mobile-nav"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/15 hover:text-white lg:hidden"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
+        <span className="hidden h-8 w-8 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20 sm:flex">
+          <Radar className="h-4 w-4 text-white" />
+        </span>
+      </div>
 
       {/* Right cluster: Agent pill · search · avatar (right to left) */}
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onOpenAgent}
-          className="flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+          className="flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-white/20 sm:px-3.5"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          {t('topbar.agent')}
+          <span className="hidden sm:inline">{t('topbar.agent')}</span>
         </button>
 
         <button

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { Outlet, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Toaster } from '@/components/ui/sonner'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
@@ -21,6 +21,8 @@ import { AssistantActivityBar } from '@/components/common/AssistantActivityBar'
 export function AppLayout() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
+  const location = useLocation()
 
   // Cmd/Ctrl+K opens the palette from anywhere in the app.
   useEffect(() => {
@@ -34,14 +36,29 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // Escape closes the mobile navigation drawer; navigating closes it too.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  useEffect(() => setNavOpen(false), [location])
+
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[hsl(var(--bar))]">
-      <TopBar onOpenSearch={() => setSearchOpen(true)} onOpenAgent={() => setAgentOpen(true)} />
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-[hsl(var(--bar))]">
+      <TopBar
+        onOpenSearch={() => setSearchOpen(true)}
+        onOpenAgent={() => setAgentOpen(true)}
+        onToggleNav={() => setNavOpen((open) => !open)}
+      />
 
       {/* Child panel */}
       <div className="min-h-0 flex-1 p-2 pt-1.5">
         <div className="relative flex h-full min-h-0 overflow-hidden rounded-2xl border border-black/10 bg-background shadow-retool-lg">
-          <Sidebar />
+          <Sidebar className="hidden lg:flex" />
 
           <main className="relative min-w-0 flex-1">
             {/* Dot-matrix world map watermark — fixed behind every page */}
@@ -60,6 +77,33 @@ export function AppLayout() {
           </AnimatePresence>
 
           <AgentDrawer open={agentOpen} onClose={() => setAgentOpen(false)} />
+
+          {/* Mobile navigation drawer — takes over from the sidebar below lg */}
+          <AnimatePresence>
+            {navOpen ? (
+              <>
+                <motion.div
+                  key="nav-scrim"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 z-30 bg-black/25 lg:hidden"
+                  onClick={() => setNavOpen(false)}
+                />
+                <motion.aside
+                  key="nav-drawer"
+                  initial={{ x: '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ type: 'tween', duration: 0.28, ease: 'easeOut' }}
+                  className="absolute inset-y-0 left-0 z-40 w-60 max-w-[80%] shadow-retool-lg lg:hidden"
+                >
+                  <Sidebar />
+                </motion.aside>
+              </>
+            ) : null}
+          </AnimatePresence>
         </div>
       </div>
 

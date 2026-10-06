@@ -45,7 +45,7 @@ export default function DashboardPage() {
 
   return (
     <PageWrapper>
-      <div className="flex flex-col gap-6 p-8">
+      <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6 xl:p-8">
         <PageHeader
           title={t('title')}
           description={t('description')}

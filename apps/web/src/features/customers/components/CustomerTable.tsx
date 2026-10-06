@@ -153,7 +153,7 @@ export function CustomerTable() {
         >
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-56 flex-1 max-w-xs">
+        <div className="relative w-full min-w-0 flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={filters.search}
@@ -163,7 +163,7 @@ export function CustomerTable() {
           />
         </div>
         <Select value={filters.status} onValueChange={(v) => handleStatusChange(v as CustomerStatus | 'all')}>
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder={tCommon('status.all')} />
           </SelectTrigger>
           <SelectContent>
@@ -178,7 +178,7 @@ export function CustomerTable() {
           </SelectContent>
         </Select>
         <Select value={filters.country} onValueChange={handleCountryChange}>
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder={t('allCountries')} />
           </SelectTrigger>
           <SelectContent>
