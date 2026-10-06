@@ -20,6 +20,7 @@ Run from the repository root.
 | `pnpm build` | Builds all three in dependency order. |
 | `pnpm test` | Runs every test suite. |
 | `pnpm openapi:write` | Regenerates `docs/reference/openapi.json`. Run after any contract change. |
+| `pnpm --filter @dme/api verify:idempotency` | Boots a throwaway Nest app and checks the idempotency interceptor end to end. Builds first. |
 
 ## Infrastructure
 
@@ -55,6 +56,17 @@ pnpm --filter @dme/contracts test
 
 It imports from `dist/`, so build first — `pnpm build` or
 `pnpm --filter @dme/contracts build`.
+
+### What Jest cannot reach
+
+`@nestjs/common` is ESM-only, and Jest loads it as CommonJS, so a test file that
+imports Nest cannot run. Anything that needs a DI container therefore lives outside
+Jest: the decision logic is split into a framework-free module that *is* unit tested,
+and the wiring around it is checked by booting a real app instead.
+
+`verify:idempotency` is that check for the idempotency interceptor — it mounts the
+interceptor, decorator, guard and error filter on a throwaway app, then asserts
+replay, conflict, per-caller scoping, and that a failure is left retryable.
 
 ## What CI should run
 

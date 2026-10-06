@@ -5,6 +5,7 @@ import type * as z from 'zod/v4'
 import { ENV } from '../../../config/env'
 import type { AppConfig } from '../../../config/env'
 import { ModelProviderError } from '../../domain/domain.errors'
+import { isAbortError } from './abort'
 import type {
   ModelTurn,
   TextGenerationRequest,
@@ -47,7 +48,14 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
   readonly #logger = new Logger(AnthropicModelAdapter.name)
 
   public constructor(@Inject(ENV) config: AppConfig) {
-    this.#client = new Anthropic({ apiKey: config.anthropic.apiKey })
+    // `maxRetries: 0` is load-bearing: the SDK retries 429/5xx twice on its own by
+    // default, and the `RetryingModel` decorator owns that policy now. Leaving the
+    // SDK's loop on would nest two policies and multiply the real attempts by three.
+    this.#client = new Anthropic({
+      apiKey: config.anthropic.apiKey,
+      timeout: config.anthropic.timeoutMs,
+      maxRetries: 0,
+    })
     this.modelId = config.anthropic.model
     this.#maxTokens = config.anthropic.maxTokens
   }
@@ -60,6 +68,7 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
         ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
         system: request.system,
         messages: toMessages(request.turns),
+        ...(request.signal === undefined ? {} : { signal: request.signal }),
       })
       return { text: readText(message.content), model: message.model }
     } catch (cause) {
@@ -75,6 +84,7 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
         system: request.system,
         messages: toMessages(request.turns),
         stream: true,
+        ...(request.signal === undefined ? {} : { signal: request.signal }),
       })
 
       for await (const event of stream) {
@@ -98,6 +108,7 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
         system: request.system,
         messages: toMessages(request.turns),
         output_config: { format: zodOutputFormat(request.schema) },
+        ...(request.signal === undefined ? {} : { signal: request.signal }),
       })
       return { data: parsed.parsed_output as z.output<TSchema>, model: parsed.model }
     } catch (cause) {
@@ -110,6 +121,17 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
     if (cause instanceof ModelProviderError) return cause
     const status = cause instanceof Anthropic.APIError ? cause.status : undefined
     this.#logger.error(`Anthropic request failed: ${String(cause)}`)
+
+    // The SDK reports a caller cancellation as a generic connection error, so the
+    // caller signal is checked first: retrying a cancelled request is pointless
+    // and would defeat the abort that let the browser leave.
+    if (isAbortError(cause)) {
+      return new ModelProviderError('The request was cancelled.', 'llm_error', { cause })
+    }
+    if (cause instanceof Anthropic.APIConnectionTimeoutError) {
+      return new ModelProviderError('The content model did not respond in time.', 'llm_unavailable', { cause })
+    }
+
     const retryable = status === undefined || status === 429 || status >= 500
     return new ModelProviderError(
       retryable

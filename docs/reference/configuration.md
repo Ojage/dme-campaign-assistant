@@ -55,6 +55,30 @@ most once. See [sessions](../explanation/authentication.md).
 | `OPENCODE_MODEL` | `glm-5.2` | Model identifier. Only the `/chat/completions` family is supported. |
 | `OPENCODE_MAX_TOKENS` | `1024` | Upper bound on a single generation. |
 
+### Timeouts and retries
+
+A generation is a network call to someone else's server, so it is bounded and
+repeated rather than left to hang.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ANTHROPIC_TIMEOUT_MS` | `60000` | Deadline for one Anthropic call. |
+| `OPENCODE_TIMEOUT_MS` | `60000` | Deadline for one OpenCode call. |
+| `LLM_RETRY_MAX_ATTEMPTS` | `3` | Total attempts per call, so `3` means one try and two retries. Between 1 and 5. |
+| `LLM_RETRY_BASE_DELAY_MS` | `250` | First wait before retrying. |
+| `LLM_RETRY_MAX_DELAY_MS` | `4000` | Ceiling the growing wait is capped at. |
+
+Only a transient failure is repeated: a dropped connection, a `429`, a `5xx`, or a
+timeout. A rejected key or a malformed request is not, because repeating it cannot
+succeed. The wait grows exponentially with the attempt number and is randomised
+across `0`–`delay` (full jitter), so several requests that fail together do not all
+return at the same instant.
+
+Retries repeat the *same* provider. They never fall back to another one or to the
+local generator: silently answering from a different model would hand back a
+campaign that does not match what was asked for. When every attempt fails the caller
+gets `503` with `llm_unavailable`.
+
 With no key at all, the deterministic local generator answers, and the boot log
 says so. Asking for a provider whose key is missing resolves to the generator and
 logs the mismatch rather than binding an adapter that would fail on every call:

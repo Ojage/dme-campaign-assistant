@@ -4,6 +4,9 @@ import { IsNull, LessThan, Repository } from 'typeorm'
 import type { SessionRepository, StoredSession } from '../application/ports/auth.ports'
 import { SessionOrmEntity } from '../../../shared/infrastructure/persistence/session.orm-entity'
 
+/** Matches the `userAgent` column width. */
+const MAX_USER_AGENT_LENGTH = 256
+
 function toStored(row: SessionOrmEntity): StoredSession {
   return {
     id: row.id,
@@ -31,7 +34,10 @@ export class TypeOrmSessionRepository implements SessionRepository {
       userId: input.userId,
       tokenHash: input.tokenHash,
       expiresAt: input.expiresAt,
-      userAgent: input.userAgent,
+      // A `User-Agent` header is client-supplied and unbounded, so it is truncated
+      // here rather than trusted to fit. Sign-in must not fail because a browser
+      // sent a long string.
+      userAgent: input.userAgent === null ? null : input.userAgent.slice(0, MAX_USER_AGENT_LENGTH),
       revokedAt: null,
     })
     return toStored(await this.repository.save(row))

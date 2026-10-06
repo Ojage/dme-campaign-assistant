@@ -64,7 +64,7 @@ export class SignIn {
     userAgent: string | null,
   ): Promise<SessionResult> {
     const access = this.tokens.issueAccessToken({ sub: user.id, email: user.email, role: user.role })
-    const refresh = this.tokens.issueRefreshToken({ jti: user.id, sub: user.id })
+    const refresh = this.tokens.issueRefreshToken({ sub: user.id })
 
     await this.sessions.create({
       userId: user.id,
@@ -119,7 +119,7 @@ export class RefreshSession {
     await this.sessions.revoke(session.id)
 
     const access = this.tokens.issueAccessToken({ sub: user.id, email: user.email, role: user.role })
-    const refresh = this.tokens.issueRefreshToken({ jti: user.id, sub: user.id })
+    const refresh = this.tokens.issueRefreshToken({ sub: user.id })
     await this.sessions.create({
       userId: user.id,
       tokenHash: this.tokens.hashRefreshToken(refresh.token),

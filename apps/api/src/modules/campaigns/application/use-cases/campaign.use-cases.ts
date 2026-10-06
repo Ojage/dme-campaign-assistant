@@ -1,5 +1,5 @@
 import { NotFoundError } from '../../../../shared/domain/domain.errors'
-import { Campaign, campaignDraftSchema } from '../../domain/campaign.entity'
+import { Campaign, campaignDraftSchema, CAMPAIGN_LIMITS } from '../../domain/campaign.entity'
 import type { CampaignChannel, CampaignLanguage, CampaignStatus, CampaignTone } from '../../domain/campaign.entity'
 import type { CampaignRepository, SegmentResolver } from '../ports/campaign.ports'
 import { CAMPAIGN_PORTS } from '../ports/campaign.ports'
@@ -85,18 +85,29 @@ export class DeleteCampaign {
  * Prompt design lives here, in the application layer: the domain decides what a
  * valid campaign is, the adapters decide which model runs it.
  */
-const CHANNEL_GUIDANCE: Readonly<Record<CampaignChannel, string>> = {
-  sms: 'SMS. Hard limit 160 characters for the body. No subject line. Write for a small screen.',
-  push: 'Push notification. Hard limit 120 characters. Lead with the hook, one clear benefit.',
-  email: 'Email. Hard limit 900 characters for the body. Structure it as an opening line, one benefit, then the call to action.',
-}
-function systemPrompt(input: GenerateCampaignInput): string {
-  const channel = CHANNEL_GUIDANCE[input.channel]
 
+/** Channels whose recipient sees only the body copy. */
+const TEXT_ONLY: ReadonlySet<CampaignChannel> = new Set<CampaignChannel>(['sms', 'push'])
+
+/**
+ * The character budgets are read from the entity rather than repeated here, so the
+ * number the model is given is the number the domain enforces.
+ */
+function channelGuidance(channel: CampaignChannel): string {
+  const limits = CAMPAIGN_LIMITS[channel]
+  const shape =
+    channel === 'email'
+      ? 'Structure it as an opening line, one benefit, then the call to action.'
+      : 'Write for a small screen.'
+
+  return `${channel.toUpperCase()}. Hard limit ${limits.message} characters for the body. ${shape}`
+}
+
+function systemPrompt(input: GenerateCampaignInput): string {
   return [
     'You are a senior lifecycle marketer writing copy for a bank in Cameroon.',
     `Write one ${input.channel.toUpperCase()} campaign in a ${input.tone} tone.`,
-    channel,
+    channelGuidance(input.channel),
     input.language === 'fr'
       ? 'Write the copy in natural French (Français). No English words.'
       : 'Write the copy in natural English. No French words.',
@@ -104,6 +115,11 @@ function systemPrompt(input: GenerateCampaignInput): string {
       ? 'A discount is available. Mention it concretely with a percentage or amount.'
       : 'No discount is running. Do not invent one.',
     'Return only: a short internal title, the body copy, and a call to action of at most 6 words.',
+    // Without this the model treats the call to action as a separate field, and on
+    // a channel that only delivers the body the recipient never sees it.
+    TEXT_ONLY.has(input.channel)
+      ? `The message is the only thing this channel delivers. End the message with the call to action as its own final sentence, and repeat the same words in the call to action field.`
+      : 'The call to action is rendered separately as a button, so it need not be repeated inside the message.',
     'Never invent account numbers, balances or interest rates.',
   ].join('\n')
 }
@@ -111,16 +127,11 @@ function systemPrompt(input: GenerateCampaignInput): string {
 function userPrompt(input: GenerateCampaignInput, target: { id: string; name: string }): string {
   return [
     `Segment: ${target.name}`,
-    `Conditions: ${describeConditions(target.id)}`,
+    // Stated here as well as in the system prompt so the task block stands on its
+    // own for a model that only reads the final turn.
+    `Channel: ${input.channel}`,
+    `Tone: ${input.tone}`,
     `Objective: ${input.objective}`,
-    'Produce the title, message and call to action.',
+    `Produce the title, message and call to action.`,
   ].join('\n')
-}
-
-/**
- * The conditions of an existing segment are not loaded for the prompt; the
- * segment name is the meaningful summary the copy needs.
- */
-function describeConditions(segmentId: string): string {
-  return segmentId === '' ? 'n/a' : 'as defined by the segment'
 }

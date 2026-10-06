@@ -34,14 +34,18 @@ export interface AccessTokenClaims {
 }
 
 export interface RefreshTokenClaims {
+  /** Identifies one issued token. Minted by the service, never by a caller. */
   readonly jti: string
   readonly sub: string
 }
 
+/** What a caller supplies: the account. The token identity is the service's job. */
+export type RefreshTokenSubject = Omit<RefreshTokenClaims, 'jti'>
+
 /** Issues and verifies tokens. Implemented by the JWT adapter. */
 export interface TokenService {
   issueAccessToken(claims: AccessTokenClaims): { token: string; expiresIn: number }
-  issueRefreshToken(claims: RefreshTokenClaims): { token: string; expiresIn: number }
+  issueRefreshToken(claims: RefreshTokenSubject): { token: string; expiresIn: number }
   verifyAccessToken(token: string): AccessTokenClaims
   verifyRefreshToken(token: string): RefreshTokenClaims
   /** One-way digest used to index a session row without storing the token. */

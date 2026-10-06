@@ -33,9 +33,9 @@ the same request, which is what makes a user-reported failure findable.
 | `session_expired` | 401 | The refresh token was already used, revoked or expired. | Clear the session and sign in again. |
 | `forbidden` | 403 | Authenticated, but not allowed. | Show an explanation; retrying will not help. |
 | `not_found` | 404 | No such resource, or none visible to this user. | Treat as empty. |
-| `conflict` | 409 | The request contradicts current state: duplicate email, illegal campaign transition. | Explain the conflict and let the user decide. |
+| `conflict` | 409 | The request contradicts current state: duplicate email, illegal campaign transition, or an `Idempotency-Key` already used for a different body. | Explain the conflict and let the user decide. Never retry unchanged. |
 | `rate_limited` | 429 | Too many requests. | Back off, honour `Retry-After`. |
-| `llm_unavailable` | 503 | The model provider could not be reached. | Retry; offer the local generator. |
+| `llm_unavailable` | 503 | The model provider could not be reached, or every attempt timed out. | Retry with backoff. A retried `POST /campaigns/generate` is safe: send an `Idempotency-Key`. |
 | `llm_error` | 502 | The provider answered with something unusable. | Retry once, then surface a failure. |
 | `internal_error` | 500 | A bug. | Report `traceId`. |
 

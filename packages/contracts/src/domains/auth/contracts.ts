@@ -40,9 +40,16 @@ export const accessTokenSchema = z.object({
 })
 export type AccessToken = z.infer<typeof accessTokenSchema>
 
-/** Response of a refresh or a session restore — no new refresh token is issued. */
+/**
+ * Response of a refresh or a session restore.
+ *
+ * A refresh rotates the refresh token, so the new one travels back here and the
+ * client must replace what it holds. Omitting it leaves the client presenting a token
+ * the server has already revoked, which signs the user out on the next refresh.
+ */
 export const sessionSchema = z.object({
   accessToken: z.string().min(1),
+  refreshToken: z.string().min(1),
   expiresIn: z.number().int().positive(),
   user: userSchema,
 })

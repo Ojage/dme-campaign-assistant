@@ -6,6 +6,7 @@ import { CampaignOrmEntity } from '../persistence/campaign.orm-entity'
 import { ChatMessageOrmEntity } from '../persistence/chat-message.orm-entity'
 import { ChatThreadOrmEntity } from '../persistence/chat-thread.orm-entity'
 import { CustomerOrmEntity } from '../persistence/customer.orm-entity'
+import { IdempotencyRecordOrmEntity } from '../persistence/idempotency-record.orm-entity'
 import { SegmentConditionOrmEntity } from '../persistence/segment-condition.orm-entity'
 import { SegmentOrmEntity } from '../persistence/segment.orm-entity'
 import { SessionOrmEntity } from '../persistence/session.orm-entity'
@@ -20,6 +21,7 @@ export const PERSISTENCE_ENTITIES = [
   CampaignOrmEntity,
   ChatThreadOrmEntity,
   ChatMessageOrmEntity,
+  IdempotencyRecordOrmEntity,
 ] as const
 
 function buildOptions(config: AppConfig): TypeOrmModuleOptions {

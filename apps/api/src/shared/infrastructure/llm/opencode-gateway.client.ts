@@ -1,5 +1,6 @@
 import * as z from 'zod/v4'
 import { ModelProviderError } from '../../domain/domain.errors'
+import { errorName, isAbortError } from './abort'
 import type {
   ModelTurn,
   TextGenerationRequest,
@@ -18,6 +19,8 @@ export interface OpenCodeGatewaySettings {
   readonly baseUrl: string
   readonly model: string
   readonly maxTokens: number
+  /** Ceiling on one provider call. */
+  readonly timeoutMs: number
 }
 
 /** The one thing this needs from Nest's logger, kept as an interface so the module stays framework-free. */
@@ -48,6 +51,7 @@ export class OpenCodeGatewayClient implements TextModel, StructuredModel {
   readonly #endpoint: string
   readonly #apiKey: string
   readonly #maxTokens: number
+  readonly #timeoutMs: number
   readonly #log: LogSink
 
   public constructor(settings: OpenCodeGatewaySettings, log: LogSink) {
@@ -55,6 +59,7 @@ export class OpenCodeGatewayClient implements TextModel, StructuredModel {
     this.#apiKey = settings.apiKey
     this.modelId = settings.model
     this.#maxTokens = settings.maxTokens
+    this.#timeoutMs = settings.timeoutMs
     this.#log = log
   }
 
@@ -149,11 +154,24 @@ export class OpenCodeGatewayClient implements TextModel, StructuredModel {
           accept: 'application/json',
         },
         body: JSON.stringify(body),
-        ...(signal === undefined ? {} : { signal }),
+        signal: this.#deadline(signal),
       })
     } catch (cause) {
       throw this.#toDomainError(undefined, undefined, cause)
     }
+  }
+
+  /**
+   * Bounds the call, which `fetch` will not do on its own: a gateway that accepts
+   * the connection and then stalls would otherwise hold the request open forever.
+   *
+   * The two signals stay distinguishable afterwards, because they mean different
+   * things — a timeout is the provider's fault and worth retrying, while a caller
+   * who cancelled should not be retried at all.
+   */
+  #deadline(caller: AbortSignal | undefined): AbortSignal {
+    const timeout = AbortSignal.timeout(this.#timeoutMs)
+    return caller === undefined ? timeout : AbortSignal.any([caller, timeout])
   }
 
   /**
@@ -166,8 +184,12 @@ export class OpenCodeGatewayClient implements TextModel, StructuredModel {
 
     // A cancelled request is the caller's doing, not an outage, so it must not be
     // reported as retryable.
-    if (cause instanceof Error && cause.name === 'AbortError') {
+    if (isAbortError(cause)) {
       return new ModelProviderError('The request was cancelled.', 'llm_error', { cause })
+    }
+    // A stall is the gateway's fault and is the most transient fault there is.
+    if (errorName(cause) === 'TimeoutError') {
+      return new ModelProviderError('The content model did not respond in time.', 'llm_unavailable', { cause })
     }
     if (status === 401 || status === 403) {
       return new ModelProviderError('The content model rejected the configured credentials.', 'llm_error', { cause })

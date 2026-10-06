@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common'
 import { APP_FILTER, APP_GUARD } from '@nestjs/core'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { AUTH_PORTS } from './auth.tokens'
+import { ENV } from '../../config/env'
+import type { AppConfig } from '../../config/env'
 import {
   AuthenticateAccessToken,
   RefreshSession,
@@ -38,7 +40,9 @@ import { UserOrmEntity } from '../../shared/infrastructure/persistence/user.orm-
     AuthenticateAccessToken,
     { provide: AUTH_PORTS.userRepository, useClass: TypeOrmUserRepository },
     { provide: AUTH_PORTS.passwordHasher, useClass: BcryptPasswordHasher },
-    { provide: AUTH_PORTS.tokenService, useClass: JwtTokenService },
+    // The service is a plain class so it can be tested without a container; this
+    // factory is what gives it the config and makes it injectable.
+    { provide: AUTH_PORTS.tokenService, inject: [ENV], useFactory: (config: AppConfig) => new JwtTokenService(config) },
     { provide: AUTH_PORTS.sessionRepository, useClass: TypeOrmSessionRepository },
     { provide: APP_GUARD, useClass: AccessTokenGuard },
     { provide: APP_FILTER, useClass: ProblemDetailsFilter },

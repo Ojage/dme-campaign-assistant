@@ -237,6 +237,10 @@
                       "type": "string",
                       "minLength": 1
                     },
+                    "refreshToken": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "expiresIn": {
                       "type": "integer",
                       "exclusiveMinimum": 0,
@@ -287,6 +291,7 @@
                   },
                   "required": [
                     "accessToken",
+                    "refreshToken",
                     "expiresIn",
                     "user"
                   ],
@@ -1920,13 +1925,27 @@
       "post": {
         "operationId": "campaigns.generate",
         "summary": "Generate a campaign",
-        "description": "Runs the configured language model over a saved segment and returns a drafted campaign. Generation is a server concern: the browser never talks to the model provider.",
+        "description": "Runs the configured language model over a saved segment and returns a drafted campaign. Generation is a server concern: the browser never talks to the model provider. Send an `Idempotency-Key` header to make the call safe to retry: the first response is recorded against the key, a repeat returns it with `Idempotency-Replayed: true` instead of generating a second campaign, and reusing a key for a different body is rejected with `conflict`.",
         "tags": [
           "Campaigns"
         ],
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[\\x21-\\x7e]+$"
+            },
+            "description": "Makes this call safe to retry. The first response is recorded against the key; a repeat of the same request returns it with `Idempotency-Replayed: true` instead of repeating the side effect. Reusing a key for a different request body is rejected with `conflict`. Only a successful response is recorded, so a failed attempt stays retryable with the same key."
           }
         ],
         "requestBody": {
@@ -2096,6 +2115,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {

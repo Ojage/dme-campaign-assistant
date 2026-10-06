@@ -1,6 +1,8 @@
 import type { AppConfig, ResolvedModelProvider } from '../../../config/env'
 import type { StructuredModel } from '../../application/ports/structured-model.port'
 import type { TextModel } from '../../application/ports/text-model.port'
+import { defaultRetryPolicy } from './retry'
+import { RetryingModel } from './retrying-model'
 
 /**
  * Which adapter the model ports get, and how to say so at boot.
@@ -16,15 +18,30 @@ export interface AdapterSet {
   readonly scripted: TextModel & StructuredModel
 }
 
-/** One lookup serves both ports, because every adapter provides both capabilities. */
+/**
+ * The single adapter instance both model ports resolve to.
+ *
+ * `TEXT_MODEL` and `STRUCTURED_MODEL` alias this rather than each building one, so
+ * chat text and campaign structure are provably served by the same object.
+ */
+export const SELECTED_MODEL = Symbol('SELECTED_MODEL')
+
+/**
+ * One lookup serves both ports, because every adapter provides both capabilities.
+ *
+ * The chosen adapter is wrapped in `RetryingModel`, so the retry policy is
+ * declared once and applies identically no matter which provider is live — and no
+ * provider is ever swapped in behind a failed call.
+ */
 export function selectAdapters(config: AppConfig, adapters: AdapterSet): TextModel & StructuredModel {
+  const policy = defaultRetryPolicy(config.retry)
   switch (config.modelProvider) {
     case 'anthropic':
-      return adapters.anthropic
+      return new RetryingModel(adapters.anthropic, policy)
     case 'opencode':
-      return adapters.opencode
+      return new RetryingModel(adapters.opencode, policy)
     case 'scripted':
-      return adapters.scripted
+      return new RetryingModel(adapters.scripted, policy)
   }
 }
 

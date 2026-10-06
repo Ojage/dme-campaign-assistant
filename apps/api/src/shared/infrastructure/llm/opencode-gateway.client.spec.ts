@@ -38,16 +38,37 @@ function adapter(overrides: Record<string, unknown> = {}): OpenCodeGatewayClient
   return new OpenCodeGatewayClient(settings, { error: () => undefined })
 }
 
+/** Either a ready response or a handler that builds one from the outgoing request. */
+type FetchStub = Response | ((url: string, init: RequestInit) => Promise<Response>)
+
 /**
  * A `fetch` stand-in that records the request and replays a canned response.
  * `globalThis.fetch` is saved and put back by hand, so the tests do not depend on
  * a Jest global for their only stub.
  */
-function stubFetch(response: Response | (() => Promise<Response>)): jest.Mock {
-  const impl = typeof response === 'function' ? response : () => Promise.resolve(response)
+function stubFetch(response: FetchStub): jest.Mock {
+  const impl = (url: string, init: RequestInit): Promise<Response> =>
+    typeof response === 'function' ? response(url, init) : Promise.resolve(response)
   const mock = jest.fn(impl) as unknown as jest.Mock
   globalThis.fetch = mock as unknown as typeof fetch
   return mock
+}
+
+/**
+ * Stands in for a gateway that accepts the connection and then stalls.
+ *
+ * Real `fetch` rejects with the signal's reason — `AbortError` when the caller
+ * cancels, `TimeoutError` when the deadline fires — which is exactly the
+ * distinction under test, so the stub honours the signal too.
+ */
+function stallingGateway(init?: RequestInit): Promise<Response> {
+  return new Promise((_resolve, reject) => {
+    const signal = init?.signal
+    if (signal == null) return
+    const fail = (): void => reject(signal.reason ?? new DOMException('The operation was aborted.', 'AbortError'))
+    if (signal.aborted) fail()
+    else signal.addEventListener('abort', fail, { once: true })
+  })
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -145,13 +166,39 @@ describe('a generation request', () => {
     await expect(adapter().generate(REQUEST)).resolves.toEqual({ text: 'Hi', model: 'glm-5.2' })
   })
 
-  it('forwards the caller abort signal, so a closed stream cancels upstream', async () => {
+  it('cancels upstream when the caller aborts, even though the signal is composed', async () => {
     const controller = new AbortController()
     const fetchMock = stubFetch(jsonResponse({ choices: [{ message: { content: 'Hi' } }] }))
 
     await adapter().generate({ ...REQUEST, signal: controller.signal })
 
-    expect((fetchMock.mock.calls[0] as [string, RequestInit])[1].signal).toBe(controller.signal)
+    // The deadline is composed with the caller's signal, so identity is not the
+    // contract — propagation is.
+    const sent = (fetchMock.mock.calls[0] as [string, RequestInit])[1].signal as AbortSignal
+    expect(sent).toBeInstanceOf(AbortSignal)
+    expect(sent.aborted).toBe(false)
+    controller.abort()
+    expect(sent.aborted).toBe(true)
+  })
+
+  it('bounds the call with its own deadline, which fetch has no default for', async () => {
+    stubFetch((_url, init) => stallingGateway(init))
+
+    const error = await captureError(adapter({ OPENCODE_TIMEOUT_MS: '20' }).generate(REQUEST))
+    expect(error.code).toBe('llm_unavailable')
+    expect(error.message).toBe('The content model did not respond in time.')
+  })
+
+  it('distinguishes a stalled gateway from a caller who left', async () => {
+    const controller = new AbortController()
+    stubFetch((_url, init) => stallingGateway(init))
+
+    const pending = adapter({ OPENCODE_TIMEOUT_MS: '5000' }).generate({ ...REQUEST, signal: controller.signal })
+    controller.abort()
+
+    const error = await captureError(pending)
+    expect(error.code).toBe('llm_error')
+    expect(error.message).toBe('The request was cancelled.')
   })
 })
 

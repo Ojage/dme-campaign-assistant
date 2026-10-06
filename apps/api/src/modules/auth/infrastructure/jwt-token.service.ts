@@ -1,60 +1,54 @@
-import { Inject, Injectable } from '@nestjs/common'
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
-import type {
-  AccessTokenClaims,
-  RefreshTokenClaims,
-  TokenService,
-} from '../application/ports/auth.ports'
-import { ENV } from '../../../config/env'
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import type { AppConfig } from '../../../config/env'
-
-interface AccessTokenPayload {
-  readonly sub: string
-  readonly email: string
-  readonly role: string
-  readonly exp: number
-  readonly iat: number
-  readonly typ: 'access'
-}
-
-interface RefreshTokenPayload {
-  readonly sub: string
-  readonly jti: string
-  readonly exp: number
-  readonly iat: number
-  readonly typ: 'refresh'
-}
+import type { RefreshTokenClaims, RefreshTokenSubject } from '../application/ports/auth.ports'
 
 /**
- * Compact HS256 JWT adapter, implemented directly so the signing scheme is
- * auditable in one file. Access and refresh tokens are signed with different
- * secrets and carry a `typ` claim, so neither can be replayed as the other.
+ * Compact HS256 token service, implemented directly so the signing scheme is
+ * auditable in one file.
+ *
+ * It has no Nest dependency: `Injectable()` is applied by the module that binds it,
+ * which is what lets the signing rules be tested here rather than only through a
+ * container. Keeping the class framework-free also means a caller cannot reach the
+ * signing keys by accident from a unit test.
  */
-@Injectable()
-export class JwtTokenService implements TokenService {
-  public constructor(@Inject(ENV) private readonly config: AppConfig) {}
+export class JwtTokenService {
+  public constructor(private readonly config: AppConfig) {}
 
-  public issueAccessToken(claims: AccessTokenClaims): { token: string; expiresIn: number } {
+  public issueAccessToken(claims: {
+    sub: string
+    email: string
+    role: string
+  }): { token: string; expiresIn: number } {
     return this.sign(claims, this.config.jwt.accessSecret, 'access', this.config.jwt.accessTtl)
   }
 
-  public issueRefreshToken(claims: RefreshTokenClaims): { token: string; expiresIn: number } {
+  /**
+   * `jti` is minted here rather than taken from the caller because it is what makes
+   * two tokens distinguishable. Deriving it from the user and the issue time — both
+   * of which repeat — produced byte-identical refresh tokens for two sign-ins in the
+   * same second, and the unique index on the stored hash turned the second into a
+   * 500. `sub` alone identifies the account, which is the caller's concern.
+   */
+  public issueRefreshToken(claims: RefreshTokenSubject): { token: string; expiresIn: number } {
     return this.sign(
-      { sub: claims.sub, jti: claims.jti },
+      { sub: claims.sub, jti: randomUUID() },
       this.config.jwt.refreshSecret,
       'refresh',
       this.config.jwt.refreshTtl,
     )
   }
 
-  public verifyAccessToken(token: string): AccessTokenClaims {
-    const payload = this.verify<AccessTokenPayload>(token, this.config.jwt.accessSecret)
+  public verifyAccessToken(token: string): { sub: string; email: string; role: string } {
+    const payload = this.verify<{ typ: string; sub: string; email: string; role: string }>(
+      token,
+      this.config.jwt.accessSecret,
+    )
     if (payload.typ !== 'access') throw new Error('Wrong token type')
     return { sub: payload.sub, email: payload.email, role: payload.role }
   }
 
   public verifyRefreshToken(token: string): RefreshTokenClaims {
-    const payload = this.verify<RefreshTokenPayload>(token, this.config.jwt.refreshSecret)
+    const payload = this.verify<{ typ: string; sub: string; jti: string }>(token, this.config.jwt.refreshSecret)
     if (payload.typ !== 'refresh') throw new Error('Wrong token type')
     return { sub: payload.sub, jti: payload.jti }
   }
@@ -78,7 +72,7 @@ export class JwtTokenService implements TokenService {
     return { token: `${header}.${claims}.${signature}`, expiresIn: ttlSeconds }
   }
 
-  private verify<TPayload extends { exp: number }>(token: string, secret: string): TPayload {
+  private verify<TPayload>(token: string, secret: string): TPayload {
     const parts = token.split('.')
     if (parts.length !== 3) throw new Error('Malformed token')
     const [header, claims, signature] = parts as [string, string, string]
@@ -89,7 +83,7 @@ export class JwtTokenService implements TokenService {
       throw new Error('Invalid signature')
     }
 
-    const payload = JSON.parse(Buffer.from(claims, 'base64url').toString('utf8')) as TPayload
+    const payload = JSON.parse(Buffer.from(claims, 'base64url').toString('utf8')) as TPayload & { exp?: unknown }
     if (typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()) {
       throw new Error('Token expired')
     }

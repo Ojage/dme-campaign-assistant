@@ -67,6 +67,9 @@ export class AuthController {
     const refreshed = await this.refreshSession.execute(body.refreshToken)
     return {
       accessToken: refreshed.accessToken,
+      // The presented token has just been revoked, so the client is given the
+      // replacement. Without it the client keeps a token that can never refresh.
+      refreshToken: refreshed.refreshToken,
       expiresIn: refreshed.expiresIn,
       user: toUserResponse(refreshed.user),
     }

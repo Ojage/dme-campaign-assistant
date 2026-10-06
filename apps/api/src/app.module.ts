@@ -12,6 +12,7 @@ import { ConfigModuleRoot } from './config/config.module'
 import { AccessTokenGuard } from './shared/http/access-token.guard'
 import { ProblemDetailsFilter } from './shared/http/problem-details.filter'
 import { DatabaseModule } from './shared/infrastructure/database/database.module'
+import { PersistenceModule } from './shared/infrastructure/persistence/persistence.module'
 
 /**
  * Composition root.
@@ -23,6 +24,7 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
   imports: [
     ConfigModuleRoot,
     DatabaseModule,
+    PersistenceModule,
     AuthModule,
     CustomersModule,
     SegmentsModule,

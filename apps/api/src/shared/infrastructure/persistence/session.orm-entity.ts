@@ -36,7 +36,12 @@ export class SessionOrmEntity {
   @Column({ type: 'timestamptz', nullable: true })
   public revokedAt!: Date | null
 
-  @Column({ type: 'varchar', length: 64, nullable: true })
+  /**
+   * Informational only — shown when listing sessions. The column is 256 because a
+   * real `User-Agent` runs to 110 characters and more, and the 64 this started with
+   * rejected sign-in outright with a 500 rather than storing a shortened value.
+   */
+  @Column({ type: 'varchar', length: 256, nullable: true })
   public userAgent!: string | null
 
   @CreateDateColumn({ type: 'timestamptz' })

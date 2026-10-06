@@ -130,7 +130,18 @@ export function buildOpenApiDocument(options: OpenApiOptions): OpenApiDocument {
  */
 type DocumentedOperation = Pick<
   Operation,
-  'method' | 'path' | 'params' | 'body' | 'query' | 'auth' | 'summary' | 'description' | 'tags' | 'errors' | 'deprecated'
+  | 'method'
+  | 'path'
+  | 'params'
+  | 'body'
+  | 'query'
+  | 'auth'
+  | 'summary'
+  | 'description'
+  | 'tags'
+  | 'errors'
+  | 'deprecated'
+  | 'idempotent'
 > &
   Partial<Pick<Operation, 'response'>> & {
     /** Present on streaming operations, which have no JSON response body. */
@@ -173,6 +184,19 @@ function addOperation(
         schema: toJsonSchema(schema as z.ZodTypeAny, 'input'),
       })
     }
+  }
+
+  // Published as a parameter so a client can see, without reading prose, that this
+  // operation is safe to retry and how the server recognises the repeat.
+  if (spec.idempotent === true) {
+    parameters.push({
+      name: 'Idempotency-Key',
+      in: 'header',
+      required: false,
+      schema: { type: 'string', minLength: 1, maxLength: 255, pattern: '^[\\x21-\\x7e]+$' },
+      description:
+        'Makes this call safe to retry. The first response is recorded against the key; a repeat of the same request returns it with `Idempotency-Replayed: true` instead of repeating the side effect. Reusing a key for a different request body is rejected with `conflict`. Only a successful response is recorded, so a failed attempt stays retryable with the same key.',
+    })
   }
 
   const requestBody =

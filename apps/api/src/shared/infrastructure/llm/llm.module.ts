@@ -4,7 +4,7 @@ import type { AppConfig } from '../../../config/env'
 import { STRUCTURED_MODEL } from '../../application/ports/structured-model.port'
 import { TEXT_MODEL } from '../../application/ports/text-model.port'
 import { AnthropicModelAdapter } from './anthropic-model.adapter'
-import { selectAdapters } from './llm-selection'
+import { selectAdapters, SELECTED_MODEL } from './llm-selection'
 import { OpenCodeModelAdapter } from './opencode-model.adapter'
 import { ScriptedModelAdapter } from './scripted-model.adapter'
 
@@ -22,7 +22,7 @@ import { ScriptedModelAdapter } from './scripted-model.adapter'
     OpenCodeModelAdapter,
     ScriptedModelAdapter,
     {
-      provide: TEXT_MODEL,
+      provide: SELECTED_MODEL,
       inject: [ENV, AnthropicModelAdapter, OpenCodeModelAdapter, ScriptedModelAdapter],
       useFactory: (
         config: AppConfig,
@@ -31,16 +31,10 @@ import { ScriptedModelAdapter } from './scripted-model.adapter'
         scripted: ScriptedModelAdapter,
       ) => selectAdapters(config, { anthropic, opencode, scripted }),
     },
-    {
-      provide: STRUCTURED_MODEL,
-      inject: [ENV, AnthropicModelAdapter, OpenCodeModelAdapter, ScriptedModelAdapter],
-      useFactory: (
-        config: AppConfig,
-        anthropic: AnthropicModelAdapter,
-        opencode: OpenCodeModelAdapter,
-        scripted: ScriptedModelAdapter,
-      ) => selectAdapters(config, { anthropic, opencode, scripted }),
-    },
+    // Aliased rather than built twice, so both ports hold the same adapter object
+    // and therefore the same retry state.
+    { provide: TEXT_MODEL, useExisting: SELECTED_MODEL },
+    { provide: STRUCTURED_MODEL, useExisting: SELECTED_MODEL },
   ],
   exports: [TEXT_MODEL, STRUCTURED_MODEL],
 })

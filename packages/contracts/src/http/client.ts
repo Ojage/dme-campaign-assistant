@@ -150,6 +150,7 @@ export class HttpClient {
       asRecord(options.query),
       options.body as BodyOf<TName> | undefined,
       options.signal,
+      options.idempotencyKey,
     )
 
     const response = spec.auth ? await this.#sendAuthorized(request) : await this.#fetch(request)
@@ -205,9 +206,14 @@ export class HttpClient {
     query: Readonly<Record<string, unknown>> | undefined,
     body: unknown,
     signal: AbortSignal | undefined,
+    idempotencyKey?: string,
   ): Request {
     const headers: Record<string, string> = { accept: 'application/json, text/event-stream' }
     if (spec.body !== undefined && body !== undefined) headers['content-type'] = 'application/json'
+    // Set here rather than per call site so it is carried by every attempt of this
+    // request, including the retry after an expired access token: a client retrying
+    // must present the same key or it would be treated as a new request.
+    if (idempotencyKey !== undefined) headers['idempotency-key'] = idempotencyKey
 
     return new Request(`${this.#baseUrl}${versionedPath(buildPath(spec.path, params))}${buildQuery(query)}`, {
       method: spec.method,
@@ -257,9 +263,12 @@ export class HttpClient {
           return null
         }
         const parsed = z
-          .object({ accessToken: z.string().min(1) })
+          .object({ accessToken: z.string().min(1), refreshToken: z.string().min(1) })
           .parse(await response.json())
+        // Both are replaced: the presented refresh token was consumed by the
+        // rotation, so keeping it would make the next refresh fail.
         this.#tokens.setAccessToken(parsed.accessToken)
+        this.#tokens.setRefreshToken(parsed.refreshToken)
         return parsed.accessToken
       } catch {
         this.#tokens.clear()

@@ -203,6 +203,102 @@ test('a signal aborted before the call rejects without reaching the network', as
   assert.equal(sent.length, 0, 'an already-aborted call must not put bytes on the wire')
 })
 
+/**
+ * A refresh token store. Records what the client stores so a test can assert that a
+ * rotated token actually replaced the previous one — the bug this guards against is
+ * silent, since the session simply stops working fifteen minutes later.
+ */
+function trackingStore(initial = { accessToken: null, refreshToken: 'refresh-one' }) {
+  const state = { ...initial }
+  return {
+    state,
+    getAccessToken: () => state.accessToken,
+    getRefreshToken: () => state.refreshToken,
+    setAccessToken: (token) => {
+      state.accessToken = token
+    },
+    setRefreshToken: (token) => {
+      state.refreshToken = token
+    },
+    clear: () => {
+      state.accessToken = null
+      state.refreshToken = null
+    },
+  }
+}
+
+test('a 401 refresh replaces both tokens, because the presented one was consumed', async () => {
+  const tokens = trackingStore()
+  const requests = []
+  const client = new HttpClient({
+    baseUrl: BASE_URL,
+    tokens,
+    fetchImpl: (input) => {
+      const request = input instanceof Request ? input : new Request(input)
+      requests.push(request.url)
+      // The first call is rejected; the refresh answers with a rotated pair; the
+      // replay of the original call then succeeds.
+      if (requests.length === 1) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ code: 'unauthenticated', title: 'unauthenticated', status: 401, detail: 'nope' }), {
+            status: 401,
+            headers: { 'content-type': 'application/problem+json' },
+          }),
+        )
+      }
+      if (request.url.includes('/auth/refresh')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ accessToken: 'access-two', refreshToken: 'refresh-two', expiresIn: 900, user: {} }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        )
+      }
+      return Promise.resolve(new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }))
+    },
+  })
+
+  await client.call('campaigns.list').catch(() => {})
+
+  assert.equal(tokens.state.accessToken, 'access-two', 'the new access token is stored')
+  assert.equal(
+    tokens.state.refreshToken,
+    'refresh-two',
+    'the rotated refresh token must replace the consumed one, or the next refresh fails',
+  )
+})
+
+test('a refresh answer without a rotated token is treated as a failure', async () => {
+  const tokens = trackingStore()
+  let call = 0
+  const client = new HttpClient({
+    baseUrl: BASE_URL,
+    tokens,
+    fetchImpl: () => {
+      call += 1
+      if (call === 1) {
+        return Promise.resolve(
+          new Response('{"code":"unauthenticated"}', {
+            status: 401,
+            headers: { 'content-type': 'application/problem+json' },
+          }),
+        )
+      }
+      // A server that does not rotate: the old shape. Storing nothing would leave a
+      // revoked token in place, so this must be rejected rather than half-applied.
+      return Promise.resolve(
+        new Response(JSON.stringify({ accessToken: 'access-two', expiresIn: 900 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+    },
+  })
+
+  await client.call('campaigns.list').catch(() => {})
+  assert.equal(tokens.state.refreshToken, null, 'a failed refresh clears the session')
+})
+
 test('refresh is sent to the versioned path', async () => {
   const { client, sent } = recordingClient()
   await client.call('auth.refresh', { body: VALID_BODIES['auth.refresh'] }).catch(() => {})

@@ -74,6 +74,40 @@ ends up consistent with the database even if a frame was lost.
 The API configures body parsing explicitly so this route is not buffered, and
 `text/event-stream` must survive any proxy in front of it.
 
+## When a provider misbehaves
+
+A provider call is the slowest and least predictable thing in the request, so it is
+bounded and repeated rather than left to hang.
+
+Each attempt has a deadline (`ANTHROPIC_TIMEOUT_MS`, `OPENCODE_TIMEOUT_MS`). Only a
+transient failure is retried — a dropped connection, `429`, `5xx`, or a timeout —
+because repeating a rejected key or a malformed request cannot make it succeed. The
+wait before each retry grows exponentially and is randomised across `0`–`delay`,
+which stops every request that failed at the same moment from returning at the same
+moment and making the outage worse.
+
+The retry repeats the *same* provider. There is no fallback to another provider or to
+the local generator: a caller asking for a campaign would otherwise get back copy
+from a different model than the one configured, with nothing marking the difference.
+Once the attempts are exhausted the caller gets `503` and `llm_unavailable`.
+
+## Retrying the request, not just the call
+
+A provider retry covers the model call. It does not cover the response on its way
+back — a connection dropped after the model answered would leave the campaign created
+but the client seeing a failure, which invites the client to ask again and create a
+second one.
+
+So `POST /campaigns/generate` accepts an `Idempotency-Key` header. The first response
+is recorded against that key; a repeat of the same request returns it again with
+`Idempotency-Replayed: true` instead of generating a second campaign. Reusing a key
+for a *different* body is refused with `conflict`, and a failure is never recorded,
+so a key stays usable for retrying. The browser mints one key per submission and
+reuses it for that submission's retries.
+
+Records are kept per authenticated caller, so one member cannot replay another's key.
+They are currently never pruned.
+
 ## Tuning
 
 - `ANTHROPIC_MAX_TOKENS` bounds a single generation. A campaign is short by

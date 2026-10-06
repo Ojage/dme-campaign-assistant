@@ -7,7 +7,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "dev": "nest start --watch",
+    "dev": "node scripts/dev.mjs",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed": "tsc -p tsconfig.seed.json && node dist-seed/database/seed.js",
@@ -15,7 +15,8 @@
     "test:watch": "jest --watch",
     "test:e2e": "jest --config test/jest-e2e.config.js --runInBand",
     "clean": "rm -rf dist dist-seed *.tsbuildinfo",
-    "build:seed": "tsc -p tsconfig.seed.json"
+    "build:seed": "tsc -p tsconfig.seed.json",
+    "verify:idempotency": "pnpm run build && node scripts/verify-idempotency.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",

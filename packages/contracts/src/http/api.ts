@@ -62,6 +62,12 @@ export interface Operation {
   readonly tags: readonly string[]
   /** Error codes this operation can answer with, beyond the implicit `internal_error`. */
   readonly errors?: readonly ErrorCode[]
+  /**
+   * True when the operation may safely be repeated with the same `Idempotency-Key`,
+   * so a client retry after a transient failure returns the original result instead
+   * of repeating the side effect.
+   */
+  readonly idempotent?: boolean
   /** Marks a superseded operation that still answers but must not be adopted. */
   readonly deprecated?: boolean
   /**
@@ -262,9 +268,10 @@ export const operations = {
     auth: true,
     summary: 'Generate a campaign',
     description:
-      'Runs the configured language model over a saved segment and returns a drafted campaign. Generation is a server concern: the browser never talks to the model provider.',
+      'Runs the configured language model over a saved segment and returns a drafted campaign. Generation is a server concern: the browser never talks to the model provider. Send an `Idempotency-Key` header to make the call safe to retry: the first response is recorded against the key, a repeat returns it with `Idempotency-Replayed: true` instead of generating a second campaign, and reusing a key for a different body is rejected with `conflict`.',
     tags: ['Campaigns'],
-    errors: ['not_found', 'llm_unavailable', 'llm_error', 'validation_failed'],
+    errors: ['not_found', 'llm_unavailable', 'llm_error', 'validation_failed', 'conflict'],
+    idempotent: true,
   },
 
   'campaigns.updateStatus': {
@@ -406,6 +413,12 @@ export interface CallOptions<TName extends OperationName> {
   body?: BodyOf<TName>
   query?: QueryOf<TName>
   signal?: AbortSignal
+  /**
+   * Sent as `Idempotency-Key`, letting a retry of this exact call return the first
+   * response instead of repeating the side effect. Reuse the same value for every
+   * attempt of one logical request, and a new one for each distinct request.
+   */
+  idempotencyKey?: string
 }
 
 export interface StreamOptions<TName extends StreamName> {

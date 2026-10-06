@@ -31,6 +31,7 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-5'),
   ANTHROPIC_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
+  ANTHROPIC_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 
   // `auto` prefers Anthropic, then OpenCode Zen, then the offline generator.
   MODEL_PROVIDER: z.enum(['auto', 'anthropic', 'opencode', 'scripted']).default('auto'),
@@ -38,6 +39,18 @@ export const envSchema = z.object({
   OPENCODE_BASE_URL: z.string().default('https://opencode.ai/zen/v1'),
   OPENCODE_MODEL: z.string().default('glm-5.2'),
   OPENCODE_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
+  OPENCODE_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+
+  /**
+   * Retry budget for transient provider faults, shared by every adapter.
+   *
+   * `maxAttempts` counts the first try, so `3` means two retries. Capped at five:
+   * a caller waiting out exponential backoff stops being a retry and starts being
+   * a hung request.
+   */
+  LLM_RETRY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(5).default(3),
+  LLM_RETRY_BASE_DELAY_MS: z.coerce.number().int().positive().default(250),
+  LLM_RETRY_MAX_DELAY_MS: z.coerce.number().int().positive().default(4_000),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -72,6 +85,8 @@ export interface AppConfig {
     readonly apiKey: string
     readonly model: string
     readonly maxTokens: number
+    /** Ceiling on one provider call. `fetch` has no default timeout of its own. */
+    readonly timeoutMs: number
     /** False when no key is configured, which rules the provider out. */
     readonly enabled: boolean
   }
@@ -81,7 +96,21 @@ export interface AppConfig {
     readonly baseUrl: string
     readonly model: string
     readonly maxTokens: number
+    readonly timeoutMs: number
     readonly enabled: boolean
+  }
+  /**
+   * Retry budget for transient provider faults.
+   *
+   * Retries only ever repeat the call to the *same* provider. Selection stays
+   * config-time: a provider that stays down produces a 503 rather than being
+   * quietly swapped for another model.
+   */
+  readonly retry: {
+    /** Including the first attempt, so `3` is one call plus two retries. */
+    readonly maxAttempts: number
+    readonly baseDelayMs: number
+    readonly maxDelayMs: number
   }
   /** What `MODEL_PROVIDER` asked for, before `auto` was resolved. */
   readonly requestedModelProvider: Env['MODEL_PROVIDER']
@@ -136,6 +165,7 @@ export function toAppConfig(env: Env): AppConfig {
       apiKey: env.ANTHROPIC_API_KEY,
       model: env.ANTHROPIC_MODEL,
       maxTokens: env.ANTHROPIC_MAX_TOKENS,
+      timeoutMs: env.ANTHROPIC_TIMEOUT_MS,
       enabled: env.ANTHROPIC_API_KEY.length > 0,
     },
     opencode: {
@@ -144,7 +174,13 @@ export function toAppConfig(env: Env): AppConfig {
       baseUrl: env.OPENCODE_BASE_URL.replace(/\/+$/, ''),
       model: env.OPENCODE_MODEL,
       maxTokens: env.OPENCODE_MAX_TOKENS,
+      timeoutMs: env.OPENCODE_TIMEOUT_MS,
       enabled: env.OPENCODE_API_KEY.length > 0,
+    },
+    retry: {
+      maxAttempts: env.LLM_RETRY_MAX_ATTEMPTS,
+      baseDelayMs: env.LLM_RETRY_BASE_DELAY_MS,
+      maxDelayMs: env.LLM_RETRY_MAX_DELAY_MS,
     },
     requestedModelProvider: env.MODEL_PROVIDER,
     modelProvider: resolveModelProvider(env),

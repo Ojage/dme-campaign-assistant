@@ -1,10 +1,22 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseInterceptors,
+} from '@nestjs/common'
 import * as z from 'zod/v4'
 import {
   generateCampaignRequestSchema,
   updateCampaignStatusRequestSchema,
 } from '@dme/contracts'
 import { zodBody, zodParams } from '../../../../shared/http/zod-validation.pipe'
+import { IdempotencyInterceptor, Idempotent } from '../../../../shared/http/idempotency.interceptor'
 import {
   DeleteCampaign,
   GenerateCampaign,
@@ -53,8 +65,14 @@ export class CampaignsController {
   /**
    * Generation always targets a saved segment: one audience definition, referenced
    * by campaigns, rather than a second way to express the same conditions.
+   *
+   * Marked idempotent because a client is allowed to repeat this: generation costs
+   * money and creates a record, so a retry after a 503 must return the first
+   * campaign rather than a second one.
    */
   @Post('generate')
+  @Idempotent()
+  @UseInterceptors(IdempotencyInterceptor)
   @HttpCode(HttpStatus.CREATED)
   public async generate(@Body(zodBody(generateCampaignRequestSchema)) body: GenerateBody) {
     return toResponse(await this.generateCampaign.execute(toInput(body)))

@@ -1,6 +1,8 @@
 import { envSchema, toAppConfig } from '../../../config/env'
 import type { AppConfig } from '../../../config/env'
 import { describeLlmMode, selectAdapters } from './llm-selection'
+import type { AdapterSet } from './llm-selection'
+import { RetryingModel } from './retrying-model'
 
 /**
  * Selection is the one piece of the wiring a misconfiguration is invisible in: the
@@ -21,27 +23,36 @@ function configFor(overrides: Record<string, string> = {}): AppConfig {
   return toAppConfig(envSchema.parse({ ...BASE, ...overrides }))
 }
 
-/** Stand-ins distinguishable only by name, since only identity matters here. */
-function adapters() {
-  const make = (name: string) => ({ name }) as never
-  return { anthropic: make('anthropic'), opencode: make('opencode'), scripted: make('scripted') }
+/**
+ * Stand-ins identifiable by their `modelId`, which is what the returned model
+ * reports and therefore the only thing selection can be observed through. The cast
+ * is safe because selection reads nothing else.
+ */
+function adapters(): AdapterSet {
+  const make = (modelId: string) => ({ modelId }) as unknown as AdapterSet['opencode']
+  return { anthropic: make('claude-sonnet-4-5'), opencode: make('glm-5.2'), scripted: make('scripted-local') }
 }
 
 describe('selectAdapters', () => {
   it('binds the adapter the configuration resolved to', () => {
     const set = adapters()
-    expect(selectAdapters(configFor({ MODEL_PROVIDER: 'opencode', OPENCODE_API_KEY: 'sk-zen' }), set)).toBe(set.opencode)
-    expect(selectAdapters(configFor({ MODEL_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'sk-ant' }), set)).toBe(
-      set.anthropic,
+    expect(selectAdapters(configFor({ MODEL_PROVIDER: 'opencode', OPENCODE_API_KEY: 'sk-zen' }), set).modelId).toBe(
+      'glm-5.2',
     )
-    expect(selectAdapters(configFor({ MODEL_PROVIDER: 'scripted' }), set)).toBe(set.scripted)
+    expect(
+      selectAdapters(configFor({ MODEL_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'sk-ant' }), set).modelId,
+    ).toBe('claude-sonnet-4-5')
+    expect(selectAdapters(configFor({ MODEL_PROVIDER: 'scripted' }), set).modelId).toBe('scripted-local')
   })
 
-  it('hands the same instance to both ports', () => {
+  it('wraps the chosen adapter in the retry policy', () => {
     const set = adapters()
-    const config = configFor({ OPENCODE_API_KEY: 'sk-zen' })
-    // A second call must not rebuild anything: chat and campaigns share one model.
-    expect(selectAdapters(config, set)).toBe(selectAdapters(config, set))
+    expect(selectAdapters(configFor({ OPENCODE_API_KEY: 'sk-zen' }), set)).toBeInstanceOf(RetryingModel)
+  })
+
+  it('reports the inner model id, so the client still learns which model answered', () => {
+    const set = adapters()
+    expect(selectAdapters(configFor({ OPENCODE_API_KEY: 'sk-zen' }), set).modelId).toBe(set.opencode.modelId)
   })
 })
 

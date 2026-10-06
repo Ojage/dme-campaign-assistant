@@ -13,7 +13,14 @@ export function getCampaigns(): Promise<GeneratedCampaign[]> {
   return apiClient.call('campaigns.list')
 }
 
-export function generateCampaign(payload: CampaignFormData): Promise<GeneratedCampaign> {
+/**
+ * `idempotencyKey` identifies one *logical* request, so it is minted once per submit
+ * and reused by every retry of that submit. It is required rather than defaulted
+ * because a fresh key per attempt would make the API treat each retry as a distinct
+ * request — and the retry would create a second campaign, which is the one thing
+ * sending the key is meant to prevent.
+ */
+export function generateCampaign(payload: CampaignFormData, idempotencyKey: string): Promise<GeneratedCampaign> {
   return apiClient.call('campaigns.generate', {
     body: {
       objective: payload.objective.trim(),
@@ -21,6 +28,7 @@ export function generateCampaign(payload: CampaignFormData): Promise<GeneratedCa
       channel: payload.channel,
       tone: payload.tone,
     },
+    idempotencyKey,
   })
 }
 

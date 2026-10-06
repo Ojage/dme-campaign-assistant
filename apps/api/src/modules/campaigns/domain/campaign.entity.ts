@@ -10,13 +10,25 @@ export type CampaignTone = (typeof CAMPAIGN_TONES)[number]
 export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number]
 export type CampaignLanguage = 'en' | 'fr'
 
-/** Hard caps per channel. Enforced here so the model can never overshoot SMS. */
-const LIMITS: Readonly<Record<CampaignChannel, { readonly message: number; readonly cta: number; readonly title: number }>> =
+/**
+ * Hard caps per channel. Exported so the generation prompt can state the same
+ * numbers the entity enforces, instead of a second set that drifts.
+ */
+export const CAMPAIGN_LIMITS: Readonly<Record<CampaignChannel, { readonly message: number; readonly cta: number; readonly title: number }>> =
   {
     sms: { message: 320, cta: 40, title: 60 },
     push: { message: 140, cta: 40, title: 60 },
     email: { message: 1200, cta: 60, title: 120 },
   }
+
+/**
+ * Channels where the recipient only ever sees the body copy.
+ *
+ * Email renders the call to action as a button beside the message, but an SMS or
+ * a push notification has nowhere to put it — a separate field would simply never
+ * be delivered, so the body has to carry it.
+ */
+const TEXT_ONLY_CHANNELS: ReadonlySet<CampaignChannel> = new Set<CampaignChannel>(['sms', 'push'])
 
 export const isCampaignChannel = (value: string): value is CampaignChannel =>
   (CAMPAIGN_CHANNELS as readonly string[]).includes(value)
@@ -95,10 +107,10 @@ export class Campaign {
    * human explicitly marks it `ready`, then `sent`.
    */
   public static fromDraft(draft: CampaignDraft, context: CampaignContext): Campaign {
-    const limit = LIMITS[context.channel]
+    const limit = CAMPAIGN_LIMITS[context.channel]
     const title = clamp(draft.title.trim(), limit.title)
-    const message = clamp(draft.message.trim(), limit.message)
     const callToAction = clamp(draft.callToAction.trim(), limit.cta)
+    const message = withCallToAction(draft.message.trim(), callToAction, context.channel, limit.message)
 
     if (title.length === 0 || message.length === 0 || callToAction.length === 0) {
       throw new ModelProviderError(
@@ -141,6 +153,30 @@ export class Campaign {
 
     this.status = next
   }
+}
+
+/**
+ * Guarantees the call to action is reachable in whatever the recipient will read.
+ *
+ * On email the field is rendered as a button, so the message is left alone. On SMS
+ * and push the body is the only surface, so a call to action the model returned
+ * separately is appended to it — otherwise it would be stored, previewed and never
+ * delivered. If appending would overflow the channel, the body gives up room first:
+ * the call to action is the part that must survive.
+ */
+function withCallToAction(message: string, callToAction: string, channel: CampaignChannel, max: number): string {
+  if (!TEXT_ONLY_CHANNELS.has(channel)) return clamp(message, max)
+  if (callToAction.length === 0) return clamp(message, max)
+  if (message.toLowerCase().includes(callToAction.toLowerCase())) return clamp(message, max)
+
+  const separator = ' '
+  // Room for the call to action plus its separator. If the channel is too small to
+  // hold both, the call to action alone is still better than an unreachable one.
+  const room = max - callToAction.length - separator.length
+  if (room <= 0) return clamp(callToAction, max)
+
+  const body = clamp(message, room).replace(/[\s.,;:!?…-]+$/u, '')
+  return `${body}${separator}${callToAction}`
 }
 
 function clamp(value: string, max: number): string {

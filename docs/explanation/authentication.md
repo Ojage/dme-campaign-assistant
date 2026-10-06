@@ -32,7 +32,8 @@ revocable cold one.
 Every refresh rotates the pair:
 
 1. The presented refresh token is looked up and **revoked**.
-2. A new pair is issued.
+2. A new pair is issued, and the new refresh token is returned so the client can
+   replace the one that was just consumed.
 
 A token can therefore be exchanged exactly once. If a stolen token is replayed
 after the legitimate client has already refreshed it, the replay is rejected as

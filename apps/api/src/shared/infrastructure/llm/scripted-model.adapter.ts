@@ -58,8 +58,10 @@ export class ScriptedModelAdapter implements TextModel, StructuredModel {
   public async generateStructured<TSchema extends z.ZodTypeAny>(
     request: StructuredGenerationRequest<TSchema>,
   ): Promise<StructuredGenerationResult<z.output<TSchema>>> {
-    const topic = objectiveOf(latestUserTurn(request.turns))
-    const draft = this.#build(request.schema, topic)
+    const turn = latestUserTurn(request.turns)
+    const topic = objectiveOf(turn)
+    const channel = channelOf(turn)
+    const draft = this.#build(request.schema, topic, channel)
 
     const parsed = request.schema.safeParse(draft)
     if (!parsed.success) {
@@ -72,7 +74,7 @@ export class ScriptedModelAdapter implements TextModel, StructuredModel {
   }
 
   /** Produces a value of the right type for every field the caller demanded. */
-  #build(schema: z.ZodTypeAny, topic: string): unknown {
+  #build(schema: z.ZodTypeAny, topic: string, channel: string): unknown {
     if (schema instanceof z.ZodObject) {
       // ZodObject.shape is `Record<string, unknown>` to callers, so the field type
       // is recovered here rather than trusted.
@@ -80,20 +82,20 @@ export class ScriptedModelAdapter implements TextModel, StructuredModel {
       return Object.fromEntries(
         Object.entries(shape).map(([key, field]) => {
           const fieldSchema = field instanceof z.ZodType ? (field as z.ZodTypeAny) : z.string()
-          return [key, this.#value(fieldSchema, key, topic)]
+          return [key, this.#value(fieldSchema, key, topic, channel)]
         }),
       )
     }
-    return this.#value(schema, 'value', topic)
+    return this.#value(schema, 'value', topic, channel)
   }
 
-  #value(schema: z.ZodTypeAny, fieldName: string, topic: string): unknown {
+  #value(schema: z.ZodTypeAny, fieldName: string, topic: string, channel: string): unknown {
     // Optional/default/nullable wrappers all wrap the schema that actually matters.
     if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable || schema instanceof z.ZodDefault) {
       // `unwrap` is declared as the internal base type, so it is re-widened here.
-      return this.#value(schema.unwrap() as z.ZodTypeAny, fieldName, topic)
+      return this.#value(schema.unwrap() as z.ZodTypeAny, fieldName, topic, channel)
     }
-    if (schema instanceof z.ZodString) return copyFor(fieldName, topic)
+    if (schema instanceof z.ZodString) return copyFor(fieldName, topic, channel)
     if (schema instanceof z.ZodNumber) return 0
     if (schema instanceof z.ZodBoolean) return false
     if (schema instanceof z.ZodEnum) return schema.options[0]
@@ -102,15 +104,27 @@ export class ScriptedModelAdapter implements TextModel, StructuredModel {
   }
 }
 
+/**
+ * Channel where the recipient reads the body alone, so the copy has to end with
+ * the call to action rather than leaving it in a field nothing will display.
+ */
+function textOnly(channel: string): boolean {
+  return channel === 'sms' || channel === 'push'
+}
+
+const CALL_TO_ACTION = 'Discover more today'
+
 /** Field-specific copy so a generated draft reads like a draft, not a placeholder. */
-function copyFor(fieldName: string, topic: string): string {
+function copyFor(fieldName: string, topic: string, channel: string): string {
   switch (fieldName) {
     case 'title':
       return truncate(topic.split('\n')[0] ?? topic, 60)
     case 'callToAction':
-      return 'Discover more today'
+      return CALL_TO_ACTION
     case 'message':
-      return `We would like to keep serving you. ${truncate(topic, 140)} Reply to this message or visit your nearest branch.`
+      return textOnly(channel)
+        ? `${truncate(topic, 120)} ${CALL_TO_ACTION}`
+        : `We would like to keep serving you. ${truncate(topic, 140)}`
     default:
       return `Scripted ${fieldName} for: ${truncate(topic, 80)}`
   }
@@ -126,9 +140,19 @@ function latestUserTurn(turns: readonly ModelTurn[]): string {
  * marketer would recognise as the subject rather than the whole instruction block.
  */
 function objectiveOf(turn: string): string {
-  const objective = turn.split('\n').find((line) => line.startsWith('Objective:'))
-  const text = objective?.slice('Objective:'.length).trim() ?? turn
-  return text.length > 0 ? text : turn
+  return fieldOf(turn, 'Objective') ?? turn
+}
+
+/** The channel the copy is for, so text-only channels can carry the call to action. */
+function channelOf(turn: string): string {
+  return (fieldOf(turn, 'Channel') ?? '').trim().toLowerCase()
+}
+
+/** Reads one `Label: value` line out of the prompt. */
+function fieldOf(turn: string, label: string): string | undefined {
+  const line = turn.split('\n').find((candidate) => candidate.startsWith(`${label}:`))
+  const text = line?.slice(label.length + 1).trim()
+  return text !== undefined && text.length > 0 ? text : undefined
 }
 
 function truncate(value: string, max: number): string {
