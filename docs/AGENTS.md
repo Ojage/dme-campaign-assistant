@@ -18,7 +18,8 @@ directories, answering four different questions.
   read the Diátaxis page for that type before writing.
 - Pages are MDX with YAML frontmatter (`title`, `description`, optional `icon`).
 - Prefer Mintlify components for structure: `<Steps>` for a sequence,
-  `<Info>/<Tip>/<Note>/<Warn>` for asides, `<Card>`/`<Cards>` for entry points.
+  `<Info>/<Tip>/<Note>/<Warn>` for asides, `<Columns cols>` with `<Card>` for
+  entry-point grids (`<Cards>` is deprecated and no longer renders).
 - Link between pages with extensionless relative paths, e.g. `../explanation/contracts`.
 - The API reference is **generated from `reference/openapi.json`** by Mintlify —
   never hand-write endpoint pages. Keep that file in sync by running

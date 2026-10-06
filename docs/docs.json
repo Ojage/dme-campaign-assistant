@@ -163,20 +163,38 @@
   "footer": {
     "links": [
       {
-        "anchor": "Live app",
-        "href": "https://campaign.ojage.org"
+        "title": "Product",
+        "items": [
+          {
+            "label": "Live app",
+            "href": "https://campaign.ojage.org",
+            "icon": "arrow-up-right-from-square"
+          }
+        ]
       },
       {
-        "anchor": "API health",
-        "href": "https://api.campaign.ojage.org/api/health"
+        "title": "System",
+        "items": [
+          {
+            "label": "API health",
+            "href": "https://api.campaign.ojage.org/api/health",
+            "icon": "server"
+          }
+        ]
       },
       {
-        "anchor": "Source code",
-        "href": "https://github.com/Ojage/dme-campaigns-ojage-fe"
+        "title": "Repository",
+        "items": [
+          {
+            "label": "Source code",
+            "href": "https://github.com/Ojage/dme-campaign-assistant",
+            "icon": "code-xml"
+          }
+        ]
       }
     ],
     "socials": {
-      "github": "https://github.com/Ojage/dme-campaigns-ojage-fe"
+      "github": "https://github.com/Ojage/dme-campaign-assistant"
     }
   }
 }

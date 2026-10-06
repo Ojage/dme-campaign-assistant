@@ -67,7 +67,7 @@ browser ──▶ api.campaign.ojage.org┘                                     
 
 3. **Checkout.** On the VPS, clone this repository to the deploy path:
    ```bash
-   git clone git@github.com:Ojage/dme-campaigns-ojage-fe.git /srv/dme-campaigns
+   git clone git@github.com:Ojage/dme-campaign-assistant.git /srv/dme-campaigns
    ```
    The deploy pipeline pulls `origin/main` and runs from there. `data/` (the
    Postgres volume and the deploy marker) lives inside that checkout and is
