@@ -7,6 +7,8 @@ import { ScrollArea } from '@/components/common/ScrollArea'
 import { useAssistantActivity } from '@/app/providers/AssistantActivityProvider'
 import { useChatThread } from '@/features/chat/hooks/useChatThread'
 import { useAppLanguage } from '@/hooks/useAppLanguage'
+import { MessageBubble } from '@/features/chat/components/MessageBubble'
+import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
 import { cn } from '@/lib/utils'
 
 /**
@@ -136,33 +138,27 @@ export function AgentDrawer({ open, onClose }: { open: boolean; onClose: () => v
         label={t('agent.title')}
       >
         {messages.length === 0 ? (
-          <p className="rounded-2xl rounded-bl-md bg-muted px-4 py-2.5 text-sm leading-relaxed text-muted-foreground">
-            {t('agent.welcome')}
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="flex items-start gap-2.5"
+          >
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/60 text-primary-foreground shadow-sm">
+              <Bot className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <p className="max-w-[88%] rounded-2xl rounded-bl-md border border-border bg-muted/50 px-4 py-3 text-sm leading-relaxed text-foreground shadow-sm">
+              {t('agent.welcome')}
+            </p>
+          </motion.div>
         ) : null}
 
         {messages.map((message) => (
-          <div key={message.id} className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}>
-            <div
-              className={cn(
-                'max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
-                message.role === 'user'
-                  ? 'rounded-br-md bg-primary text-primary-foreground'
-                  : 'rounded-bl-md bg-muted text-foreground',
-                message.streaming === true ? 'opacity-90' : '',
-              )}
-            >
-              {message.text}
-            </div>
-          </div>
+          <MessageBubble key={message.id} message={message} />
         ))}
 
         {isStreaming && messages.at(-1)?.streaming !== true ? (
-          <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-md bg-muted px-4 py-2.5 text-sm text-muted-foreground">
-              {t('agent.thinking')}
-            </div>
-          </div>
+          <TypingIndicator label={t('agent.thinking')} />
         ) : null}
 
         {error !== null ? (

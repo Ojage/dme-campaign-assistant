@@ -17,7 +17,7 @@
     "preview": "pnpm --filter @dme/web preview",
     "start": "pnpm --filter @dme/api start",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --if-present test && node --test scripts/change-detect.test.mjs",
     "openapi:write": "pnpm --filter @dme/contracts openapi",
     "seed": "pnpm --filter @dme/api seed",
     "db:up": "docker compose up -d postgres",

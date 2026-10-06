@@ -1,0 +1,150 @@
+# Production stack for the DME Campaign Assistant.
+#
+# It shares a VPS with NNACT Pro, whose Caddy container owns ports 80 and 443
+# and publishes this project's two hostnames. Nothing here therefore publishes
+# a port: the proxy reaches `campaign-api` and `campaign-web` over the shared
+# proxy network, and Postgres is reachable only from the private `campaign`
+# network. Service names are prefixed with `campaign-` because Docker's DNS
+# aliases are per-network, not per-project — an unprefixed `api` on the shared
+# network would collide with NNACT Pro's own API.
+name: dme-campaigns
+
+services:
+  campaign-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-campaigns}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-campaigns}
+    volumes:
+      # Bind mount rather than a named volume so backups and restores work the
+      # same way they do for NNACT Pro: the data is a directory on the host.
+      - ../data/pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-campaigns} -d ${POSTGRES_DB:-campaigns}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - campaign
+    restart: unless-stopped
+
+  campaign-api:
+    image: ${CAMPAIGN_API_IMAGE:-dme/campaign-api:prod}
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      API_PREFIX: api
+      # The browser calls this origin from a different host, so the web origin
+      # has to be allow-listed rather than inferred.
+      CORS_ORIGINS: https://${CAMPAIGN_SITE_ADDRESS:-campaign.ojage.org}
+
+      DATABASE_HOST: campaign-postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-campaigns}
+      DATABASE_USER: ${POSTGRES_USER:-campaigns}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DATABASE_SSL: 'false'
+
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET to at least 16 characters}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET to at least 16 characters}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-900}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-604800}
+
+      # The seed is the schema step; it must be told the deploy means it.
+      ALLOW_SCHEMA_PUSH: ${ALLOW_SCHEMA_PUSH:-false}
+
+      MODEL_PROVIDER: ${MODEL_PROVIDER:-auto}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5-5}
+      ANTHROPIC_MAX_TOKENS: ${ANTHROPIC_MAX_TOKENS:-1024}
+      ANTHROPIC_TIMEOUT_MS: ${ANTHROPIC_TIMEOUT_MS:-60000}
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-glm-5.2}
+      OPENCODE_MAX_TOKENS: ${OPENCODE_MAX_TOKENS:-1024}
+      OPENCODE_TIMEOUT_MS: ${OPENCODE_TIMEOUT_MS:-60000}
+      LLM_RETRY_MAX_ATTEMPTS: ${LLM_RETRY_MAX_ATTEMPTS:-3}
+      LLM_RETRY_BASE_DELAY_MS: ${LLM_RETRY_BASE_DELAY_MS:-250}
+      LLM_RETRY_MAX_DELAY_MS: ${LLM_RETRY_MAX_DELAY_MS:-4000}
+    depends_on:
+      campaign-postgres:
+        condition: service_healthy
+    healthcheck:
+      # No curl or wget in the slim Node image; Node itself is the probe.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - campaign
+      - proxy
+    restart: unless-stopped
+
+  # One-off job: creates or updates the schema and writes the demo workspace
+  # accounts. Idempotent, so it is safe to re-run on every deploy:
+  #   docker compose -f infra/compose.prod.yml --profile tools run --rm campaign-seed
+  campaign-seed:
+    profiles: ['tools']
+    image: ${CAMPAIGN_API_IMAGE:-dme/campaign-api:prod}
+    environment:
+      NODE_ENV: production
+      DATABASE_HOST: campaign-postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-campaigns}
+      DATABASE_USER: ${POSTGRES_USER:-campaigns}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DATABASE_SSL: 'false'
+      ALLOW_SCHEMA_PUSH: ${ALLOW_SCHEMA_PUSH:-false}
+      # Seed passwords are fixed, so the seed must know the JWT secrets too
+      # through env validation even though it never issues a token.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET to at least 16 characters}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET to at least 16 characters}
+    depends_on:
+      campaign-postgres:
+        condition: service_healthy
+    command: ['node', 'dist-seed/database/seed.js']
+    networks:
+      - campaign
+    restart: 'no'
+
+  campaign-web:
+    image: ${CAMPAIGN_WEB_IMAGE:-dme/campaign-web:prod}
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Baked into the bundle: the API origin plus the global prefix, so the
+        # browser asks for https://api.campaign.ojage.org/api/v1/...
+        VITE_API_URL: https://${CAMPAIGN_API_ADDRESS:-api.campaign.ojage.org}/api
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1/ > /dev/null || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - campaign
+      - proxy
+    restart: unless-stopped
+
+networks:
+  # Private to this project: api and Postgres only.
+  campaign:
+    driver: bridge
+  # Created by the NNACT Pro stack, which runs the reverse proxy. External
+  # because the proxy's lifecycle belongs to that project — this stack must
+  # never create or remove it.
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-openfieldpro_internal}

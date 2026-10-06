@@ -16,13 +16,10 @@
  */
 
 import { spawn } from 'node:child_process'
-import { createRequire } from 'node:module'
-import { rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import process from 'node:process'
 
-const require = createRequire(import.meta.url)
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const TSC = path.join(apiRoot, 'node_modules', 'typescript', 'lib', 'tsc.js')
@@ -46,6 +43,27 @@ const log = (name, message) => {
 
 const children = new Set()
 
+/**
+ * Startup failures that cannot be recovered from by saving a file. `node --watch` does
+ * not exit when the program under it fails to boot — it prints the error and waits for
+ * the next change — so these have to be recognised from the output. Left unchecked, a
+ * failed boot leaves a runner that looks alive but serves nothing.
+ */
+const FATAL = [
+  {
+    match: /EADDRINUSE/,
+    hint: 'another process holds the port. Free it, or start on another: PORT=4100 pnpm run dev',
+  },
+  {
+    match: /The API failed to start/,
+    hint: 'the Nest bootstrap rejected startup; see the error above',
+  },
+  {
+    match: /Cannot find module/,
+    hint: 'dist is missing or stale; run `pnpm run build` first',
+  },
+]
+
 /** Forwards a child's stdout/stderr line by line, prefixed and colour-coded. */
 function pipe(stream, name, target) {
   let buffer = ''
@@ -55,6 +73,13 @@ function pipe(stream, name, target) {
     buffer = lines.pop() ?? ''
     for (const line of lines) {
       target.write(`${label(name)}${line}\n`)
+      if (name === 'api') {
+        const fatal = FATAL.find((candidate) => candidate.match.test(line))
+        if (fatal) {
+          log('runner', fatal.hint)
+          shutdown(1)
+        }
+      }
     }
   })
   stream.on('end', () => {
@@ -134,13 +159,15 @@ function buildOnce() {
 
 log('runner', 'TypeScript 7 exposes no compiler API, so this runner drives the tsc CLI directly.')
 
-const code = await buildOnce()
-if (code !== 0) {
-  log('runner', `initial build failed with code ${code}; not starting the server`)
-  process.exit(code)
+const buildCode = await buildOnce()
+if (buildCode !== 0) {
+  log('runner', `initial build failed with code ${buildCode}; not starting the server`)
+  process.exit(buildCode)
 }
 
 log('runner', 'initial build succeeded; starting watchers')
 
 start('tsc', [TSC, '-p', TSC_PROJECT, '--watch', '--preserveWatchOutput'])
 start('api', ['--watch', '--enable-source-maps', ENTRY])
+
+log('runner', 'watching for changes')

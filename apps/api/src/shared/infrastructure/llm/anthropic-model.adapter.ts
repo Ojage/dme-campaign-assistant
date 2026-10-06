@@ -62,14 +62,16 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
 
   public async generate(request: TextGenerationRequest): Promise<TextGenerationResult> {
     try {
-      const message = await this.#client.messages.create({
-        model: this.modelId,
-        max_tokens: request.maxTokens ?? this.#maxTokens,
-        ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
-        system: request.system,
-        messages: toMessages(request.turns),
-        ...(request.signal === undefined ? {} : { signal: request.signal }),
-      })
+      const message = await this.#client.messages.create(
+        {
+          model: this.modelId,
+          max_tokens: request.maxTokens ?? this.#maxTokens,
+          ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+          system: request.system,
+          messages: toMessages(request.turns),
+        },
+        requestOptions(request.signal),
+      )
       return { text: readText(message.content), model: message.model }
     } catch (cause) {
       throw this.#toDomainError(cause)
@@ -78,14 +80,16 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
 
   public async *stream(request: TextGenerationRequest): AsyncGenerator<string, void, undefined> {
     try {
-      const stream = await this.#client.messages.create({
-        model: this.modelId,
-        max_tokens: request.maxTokens ?? this.#maxTokens,
-        system: request.system,
-        messages: toMessages(request.turns),
-        stream: true,
-        ...(request.signal === undefined ? {} : { signal: request.signal }),
-      })
+      const stream = await this.#client.messages.create(
+        {
+          model: this.modelId,
+          max_tokens: request.maxTokens ?? this.#maxTokens,
+          system: request.system,
+          messages: toMessages(request.turns),
+          stream: true,
+        },
+        requestOptions(request.signal),
+      )
 
       for await (const event of stream) {
         // Only text deltas matter here; thinking and tool blocks are ignored.
@@ -102,14 +106,16 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
     request: StructuredGenerationRequest<TSchema>,
   ): Promise<StructuredGenerationResult<z.output<TSchema>>> {
     try {
-      const parsed = await this.#client.messages.parse({
-        model: this.modelId,
-        max_tokens: request.maxTokens ?? this.#maxTokens,
-        system: request.system,
-        messages: toMessages(request.turns),
-        output_config: { format: zodOutputFormat(request.schema) },
-        ...(request.signal === undefined ? {} : { signal: request.signal }),
-      })
+      const parsed = await this.#client.messages.parse(
+        {
+          model: this.modelId,
+          max_tokens: request.maxTokens ?? this.#maxTokens,
+          system: request.system,
+          messages: toMessages(request.turns),
+          output_config: { format: zodOutputFormat(request.schema) },
+        },
+        requestOptions(request.signal),
+      )
       return { data: parsed.parsed_output as z.output<TSchema>, model: parsed.model }
     } catch (cause) {
       throw this.#toDomainError(cause)
@@ -141,4 +147,13 @@ export class AnthropicModelAdapter implements TextModel, StructuredModel {
       { cause },
     )
   }
+}
+
+/**
+ * The SDK takes cancellation as a request option, not a message field; sending `signal`
+ * in the body makes Anthropic reject the whole request with "signal: Extra inputs are
+ * not permitted".
+ */
+function requestOptions(signal: AbortSignal | undefined): { signal?: AbortSignal | undefined } {
+  return signal === undefined ? {} : { signal }
 }

@@ -28,6 +28,7 @@ import { useCustomers, PAGE_SIZE_OPTIONS } from '@/features/customers/hooks/useC
 import { CustomerStatus, type Customer } from '@/features/customers/types/customer.types'
 import { formatDate, formatXaf } from '@/utils/formatters'
 import { getCountries } from '@/features/customers/api/customersApi'
+import { useFocusFlash } from '@/features/search/hooks/useFocusFlash'
 import { cn } from '@/lib/utils'
 
 const STATUS_BADGE_CLASSES: Record<CustomerStatus, string> = {
@@ -41,6 +42,7 @@ const columnHelper = createColumnHelper<Customer>()
 export function CustomerTable() {
   const { t } = useTranslation('customers')
   const { t: tCommon } = useTranslation('common')
+  const { flashId, flashClass } = useFocusFlash()
   const {
     customers,
     total,
@@ -227,13 +229,20 @@ export function CustomerTable() {
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="transition-colors">
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                  ))}
-                </TableRow>
-              ))}
+              {table.getRowModel().rows.map((row) => {
+                const customerId = row.original.id
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-focus-id={customerId}
+                    className={cn('transition-colors', customerId === flashId && flashClass)}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    ))}
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>

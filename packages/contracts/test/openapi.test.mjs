@@ -39,7 +39,7 @@ test('every registered operation appears exactly once', () => {
     return [{ name, path, method }]
   })
 
-  assert.equal(declared.length, 23)
+  assert.equal(declared.length, 24)
 
   for (const { name, path, method } of declared) {
     const entry = paths[path]
@@ -172,6 +172,7 @@ test('no embedded schema declares its own JSON Schema dialect', () => {
 
 test('the operations can be listed per tag for the written reference', () => {
   const grouped = operationsByTag()
-  assert.deepEqual(Object.keys(grouped).sort(), ['Authentication', 'Campaigns', 'Chat', 'Customers', 'Segments'])
+  assert.deepEqual(Object.keys(grouped).sort(), ['Authentication', 'Campaigns', 'Chat', 'Customers', 'Search', 'Segments'])
   assert.equal(grouped.Chat.length, 6)
+  assert.equal(grouped.Search.length, 1)
 })

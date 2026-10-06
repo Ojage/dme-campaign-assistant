@@ -70,6 +70,9 @@ higher-value credentials should move refresh tokens to an `HttpOnly`, `Secure`,
 The HTTP client refreshes once and replays the original request:
 
 - A `401` triggers a refresh.
+- The rotated pair returned by the refresh **replaces both stored tokens** — the
+  refresh token in the store is the one the server just consumed, so keeping it
+  would fail the next refresh with `session_expired`.
 - Concurrent `401`s share **one** refresh, so a screen firing five queries does not
   fire five refreshes.
 - If the refresh fails, the session is cleared and the router sends the user to sign

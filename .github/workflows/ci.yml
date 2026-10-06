@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.x
+      - name: Install Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.x
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+      - name: Build
+        run: pnpm build
+      - name: Verify the OpenAPI document is current
+        run: |
+          pnpm openapi:write
+          git diff --exit-code -- docs/reference/openapi.json
+
+  # Building the actual images catches lockfile drift and Dockerfile mistakes
+  # before they reach the VPS.
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.x
+      - name: Build API image
+        run: docker build --pull -f apps/api/Dockerfile -t dme/campaign-api:ci .
+      - name: Build web image
+        run: docker build --pull --build-arg VITE_API_URL=https://api.campaign.ojage.org/api -f apps/web/Dockerfile -t dme/campaign-web:ci .

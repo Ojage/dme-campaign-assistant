@@ -58,7 +58,7 @@ describe('selectAdapters', () => {
 
 describe('describeLlmMode', () => {
   it('names the provider and model that will answer', () => {
-    expect(describeLlmMode(configFor({ ANTHROPIC_API_KEY: 'sk-ant' }))).toBe('Anthropic (claude-sonnet-4-5)')
+    expect(describeLlmMode(configFor({ ANTHROPIC_API_KEY: 'sk-ant' }))).toBe('Anthropic (claude-sonnet-5-5)')
     expect(describeLlmMode(configFor({ OPENCODE_API_KEY: 'sk-zen' }))).toBe(
       'OpenCode Zen (glm-5.2 via https://opencode.ai/zen/v1)',
     )

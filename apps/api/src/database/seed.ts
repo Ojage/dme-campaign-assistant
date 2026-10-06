@@ -11,18 +11,35 @@ import { SegmentOrmEntity } from '../shared/infrastructure/persistence/segment.o
 import { SegmentConditionOrmEntity } from '../shared/infrastructure/persistence/segment-condition.orm-entity'
 
 /**
- * Development seed.
+ * Seed and schema owner.
  *
  * Creates the two workspace accounts the UI documents and a realistic customer
  * set so segments and campaigns have something to work with. Idempotent: running
  * it twice leaves the same data, so it is safe to re-run against an existing
  * database.
+ *
+ * It doubles as the migration step: the entities are synchronized first, so a
+ * production deploy that runs this script creates or alters tables to match the
+ * code that is being shipped. That is why production refuses to run it without
+ * `ALLOW_SCHEMA_PUSH=true`.
  */
 
 // The seed runs outside Nest, so it loads the env files the API would.
 loadEnv({ path: ['.env.local', '.env'] })
 
 const config: AppConfig = toAppConfig(envSchema.parse(process.env))
+
+/**
+ * The seed is also the schema owner: TypeORM synchronises entity metadata
+ * before it writes rows, which is a destructive-capable operation on a live
+ * database. In development that is the desired default; in production it must
+ * be asked for, so a deploy only mutates the schema when the pipeline has
+ * explicitly authorised it (see docs/reference/deployment.md).
+ */
+if (config.env === 'production' && process.env.ALLOW_SCHEMA_PUSH !== 'true') {
+  console.error('Refusing to push schema in production. Set ALLOW_SCHEMA_PUSH=true to authorise it.')
+  process.exit(1)
+}
 
 const dataSource = new DataSource({
   type: 'postgres',

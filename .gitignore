@@ -38,3 +38,9 @@ Thumbs.db
 .vite/
 .turbo/
 .eslintcache
+
+# Production deploy state on the VPS: the Postgres data directory and the
+# commit marker that the deploy pipeline reads. Both live inside the checked-out
+# repo at the deploy path, so they must never be committed.
+data/
+**/data/pg

@@ -29,6 +29,20 @@ Run from the repository root.
 | `docker compose up -d postgres` | Starts PostgreSQL. |
 | `docker compose down -v` | Stops it and deletes the volume — every customer is lost. |
 
+## Deployment
+
+These run on the VPS from the production checkout (see
+[deployment.md](deployment.md)); the GitHub workflow drives the first two.
+
+| Command | Does |
+| --- | --- |
+| `.github/workflows/ci.yml` | Typecheck, tests, build, Docker image build, OpenAPI freshness — on every PR and push. |
+| `.github/workflows/deploy-production.yml` | On a `main` push: pulls, writes `.env`, starts the deploy detached, polls, verifies the deployed HEAD contains the pushed commit. |
+| `scripts/ci-deploy.sh` | The remote deploy: env merge, change detection, image builds, Postgres, schema+seed, health wait, marker. |
+| `scripts/start-deploy.sh` | Starts `ci-deploy.sh` with `nohup` so a dropped SSH connection cannot kill it. |
+| `scripts/deploy-status.sh` | Prints the deploy log and its exit code for the workflow's poll loop. |
+| `scripts/change-detect.mjs` | Maps the changed file set to the images that need a rebuild (`API` / `WEB` / `SCHEMA` / `ALL`). Pure and unit-tested. |
+
 ## Per package
 
 Each package is a workspace, so its own scripts work too:
@@ -78,4 +92,6 @@ pnpm build
 ```
 
 Then assert that `pnpm openapi:write` leaves no diff: a specification that changed
-without being committed is an unreviewed contract change.
+without being committed is an unreviewed contract change. CI builds both Docker
+images too, so a lockfile drift or a Dockerfile mistake fails before it reaches
+the VPS.

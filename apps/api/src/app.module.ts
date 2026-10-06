@@ -5,8 +5,10 @@ import { CampaignsModule } from './modules/campaigns/campaigns.module'
 import { ChatModule } from './modules/chat/chat.module'
 import { CustomersModule } from './modules/customers/customers.module'
 import { DocumentationModule } from './modules/documentation/documentation.module'
+import { HealthModule } from './modules/health/health.module'
 import { DeprecationInterceptor } from './shared/http/deprecation.interceptor'
 import { apiRegistry } from './shared/http/deprecation'
+import { SearchModule } from './modules/search/search.module'
 import { SegmentsModule } from './modules/segments/segments.module'
 import { ConfigModuleRoot } from './config/config.module'
 import { AccessTokenGuard } from './shared/http/access-token.guard'
@@ -30,7 +32,9 @@ import { PersistenceModule } from './shared/infrastructure/persistence/persisten
     SegmentsModule,
     CampaignsModule,
     ChatModule,
+    SearchModule,
     DocumentationModule,
+    HealthModule,
   ],
   providers: [
     // Every route requires a bearer token; @Public() opts out.

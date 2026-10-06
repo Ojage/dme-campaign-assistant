@@ -19,6 +19,8 @@ import {
   listCustomersQuerySchema,
   newCustomerSchema,
   refreshTokenSchema,
+  searchQuerySchema,
+  searchResponseSchema,
   segmentPreviewRequestSchema,
   segmentSchema,
   sendMessageRequestSchema,
@@ -364,6 +366,19 @@ export const operations = {
       'Non-streaming counterpart of `chat.messages.stream`: one request, one complete assistant message.',
     tags: ['Chat'],
     errors: ['not_found', 'llm_unavailable', 'llm_error'],
+  },
+
+  'search.global': {
+    method: 'GET',
+    query: searchQuerySchema,
+    path: '/search',
+    response: searchResponseSchema,
+    auth: true,
+    summary: 'Search across customers, segments and campaigns',
+    description:
+      'Relevance-ranked, fuzzy. A query may match a substring, a word prefix or (for three or more characters) a trigram-similar phrase; the signal is accent-insensitive, so typography cannot hide a match. Results mix all three record types sorted by score, which the palette mirrors as grouped sections. Every result answers with a `score`, the client-facing rank, never with an SQL value.',
+    tags: ['Search'],
+    errors: [],
   },
 } as const satisfies Record<string, Operation>
 

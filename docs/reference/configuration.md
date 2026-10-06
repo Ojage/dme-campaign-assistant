@@ -48,7 +48,7 @@ most once. See [sessions](../explanation/authentication.md).
 | --- | --- | --- |
 | `MODEL_PROVIDER` | `auto` | `auto`, `anthropic`, `opencode` or `scripted`. `auto` takes the first provider whose key is set, in that order. |
 | `ANTHROPIC_API_KEY` | empty | Key for Anthropic. Empty rules the provider out. |
-| `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Model identifier for generation. |
+| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Model identifier for generation. `claude-sonnet-4-5` was deprecated on 2026-09-30. |
 | `ANTHROPIC_MAX_TOKENS` | `1024` | Upper bound on a single generation. |
 | `OPENCODE_API_KEY` | empty | Key for OpenCode Zen. Empty rules the provider out. |
 | `OPENCODE_BASE_URL` | `https://opencode.ai/zen/v1` | Gateway root; `/chat/completions` is appended. Point it at any OpenAI-compatible gateway. |

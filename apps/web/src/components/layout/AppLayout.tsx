@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Toaster } from '@/components/ui/sonner'
@@ -21,6 +21,18 @@ import { AssistantActivityBar } from '@/components/common/AssistantActivityBar'
 export function AppLayout() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
+
+  // Cmd/Ctrl+K opens the palette from anywhere in the app.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen((open) => !open)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-[hsl(var(--bar))]">

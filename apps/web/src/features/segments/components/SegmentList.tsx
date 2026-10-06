@@ -12,6 +12,8 @@ import {
   type Segment,
 } from '@/features/segments/types/segment.types'
 import { useSegments } from '@/features/segments/hooks/useSegments'
+import { useFocusFlash } from '@/features/search/hooks/useFocusFlash'
+import { cn } from '@/lib/utils'
 
 const FIELD_KEYS: Record<SegmentConditionField, string> = {
   [SegmentConditionField.TOTAL_AMOUNT_SPENT]: 'totalAmountSpent',
@@ -35,6 +37,7 @@ function describeCondition(segment: Segment, format: (field: SegmentConditionFie
 export function SegmentList() {
   const { t } = useTranslation('segments')
   const { segments, isLoading, error, deletingId, reload, deleteSegment } = useSegments()
+  const { flashId, flashClass } = useFocusFlash()
 
   const formatValue = (field: SegmentConditionField, value: string | number): string =>
     field === SegmentConditionField.TOTAL_AMOUNT_SPENT ? formatXaf(Number(value)) : String(value)
@@ -62,7 +65,11 @@ export function SegmentList() {
           segments.map((segment) => (
             <div
               key={segment.id}
-              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-muted/40"
+              data-focus-id={segment.id}
+              className={cn(
+                'flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-muted/40',
+                segment.id === flashId && flashClass,
+              )}
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">

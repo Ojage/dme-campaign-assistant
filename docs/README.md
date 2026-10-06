@@ -17,6 +17,8 @@ directories rather than in one long file.
 - **New to the project?** Read the root [README](../README.md), then the tutorial
   [Your first campaign](tutorials/first-campaign.md). It takes about ten minutes.
 - **Need to do a task?** Jump to the [how-to guides](how-to/).
+- **Shipping?** Read the [deployment reference](reference/deployment.md) first —
+  it explains the shared-VPS topology and the CI/CD pipeline.
 - **Integrating against the API?** Use the [generated reference](reference/api.md),
   which is rendered from the same schemas the server validates with.
 - **Reviewing a change?** Read the [explanation](explanation/) for the boundaries a

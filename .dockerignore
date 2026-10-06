@@ -1,0 +1,29 @@
+# Build context hygiene: the image only needs sources and manifests.
+node_modules
+**/node_modules
+.git
+.github
+
+# Build output — always rebuilt inside the image, never copied in.
+**/dist
+**/dist-seed
+**/*.tsbuildinfo
+**/.vite
+
+# Never ship a local environment file into an image layer.
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# Local database volume and deploy state (created on the VPS, not in the image).
+data
+**/data/pg
+
+coverage
+logs
+**/*.log
+
+docs
+README.md

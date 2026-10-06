@@ -23,7 +23,7 @@ CI run stays reproducible.
 ```bash
 # apps/api/.env
 ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-sonnet-4-5
+ANTHROPIC_MODEL=claude-sonnet-5-5
 ANTHROPIC_MAX_TOKENS=1024
 ```
 

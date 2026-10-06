@@ -29,7 +29,9 @@ export const envSchema = z.object({
   JWT_REFRESH_TTL: z.coerce.number().int().positive().default(604_800),
 
   ANTHROPIC_API_KEY: z.string().default(''),
-  ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-5'),
+  // claude-sonnet-4-5 is deprecated as of 2026-09-30; the current default is the
+  // recommended replacement. Set ANTHROPIC_MODEL to opt into a different one.
+  ANTHROPIC_MODEL: z.string().default('claude-sonnet-5-5'),
   ANTHROPIC_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
   ANTHROPIC_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 

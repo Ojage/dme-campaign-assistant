@@ -4,9 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime } from '@/utils/formatters'
 import type { GeneratedCampaign } from '@/features/campaigns/types/campaign.types'
+import { useFocusFlash } from '@/features/search/hooks/useFocusFlash'
+import { cn } from '@/lib/utils'
 
 export function RecentCampaigns({ campaigns }: { campaigns: GeneratedCampaign[] }) {
   const { t } = useTranslation('campaigns')
+  const { flashId, flashClass } = useFocusFlash()
 
   return (
     <Card>
@@ -22,7 +25,11 @@ export function RecentCampaigns({ campaigns }: { campaigns: GeneratedCampaign[] 
           <p className="py-4 text-center text-sm text-muted-foreground">{t('recent.none')}</p>
         ) : (
           campaigns.slice(0, 6).map((campaign) => (
-            <div key={campaign.id} className="rounded-lg border border-border px-4 py-3">
+            <div
+              key={campaign.id}
+              data-focus-id={campaign.id}
+              className={cn('rounded-lg border border-border px-4 py-3', campaign.id === flashId && flashClass)}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">{campaign.title}</p>
                 <Badge variant="outline">{t(`form.channels.${campaign.channel}`)}</Badge>
