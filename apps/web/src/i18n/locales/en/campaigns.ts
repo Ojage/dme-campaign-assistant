@@ -43,8 +43,9 @@ export default {
   },
   recent: {
     title: 'Recent campaigns',
-    description: 'Everything generated in this session.',
+    description: 'Select a campaign to preview its copy again.',
     none: 'No campaigns generated yet.',
+    view: 'Open preview',
   },
   status: {
     draft: 'Draft',

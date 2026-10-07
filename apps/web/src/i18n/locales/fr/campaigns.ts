@@ -43,8 +43,9 @@ export default {
   },
   recent: {
     title: 'Campagnes récentes',
-    description: 'Tout ce qui a été généré dans cette session.',
+    description: 'Sélectionnez une campagne pour revoir son contenu.',
     none: 'Aucune campagne générée pour le moment.',
+    view: 'Ouvrir l’aperçu',
   },
   status: {
     draft: 'Brouillon',

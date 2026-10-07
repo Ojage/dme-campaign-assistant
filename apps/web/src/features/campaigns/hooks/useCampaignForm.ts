@@ -48,11 +48,18 @@ export function useCampaignForm() {
   const queryClient = useQueryClient()
   const [form, setForm] = useState<CampaignFormData>(EMPTY_FORM)
   const [result, setResult] = useState<GeneratedCampaign | null>(null)
+  // Id of the campaign that just came out of a generation. Unlike `result`, it is
+  // cleared again when the user opens an older campaign from history, so the page
+  // can tell "freshly generated" apart from "reopened" and confetti only fires once.
+  const [celebrateId, setCelebrateId] = useState<string | null>(null)
 
   const segmentsQuery = useQuery({ queryKey: queryKeys.segments.all, queryFn: getSegments })
-  const campaignsQuery = useQuery({ queryKey: queryKeys.campaigns.all, queryFn: getCampaigns })
-
+  const campaignsQuery = useQuery({
+    queryKey: queryKeys.campaigns.all,
+    queryFn: () => getCampaigns(),
+  })
   const segments = segmentsQuery.data ?? []
+  const recent = campaignsQuery.data?.items ?? []
 
   /**
    * One submit and its retries are one logical request, so the key travels with the
@@ -72,6 +79,7 @@ export function useCampaignForm() {
     },
     onSuccess: async (campaign) => {
       setResult(campaign)
+      setCelebrateId(campaign.id)
       await queryClient.invalidateQueries({ queryKey: queryKeys.campaigns.all })
     },
   })
@@ -87,6 +95,13 @@ export function useCampaignForm() {
     await generateMutation.mutateAsync({ form, idempotencyKey: crypto.randomUUID() })
   }, [form, generateMutation])
 
+  const openCampaign = useCallback((campaign: GeneratedCampaign) => {
+    setResult(campaign)
+    // A reopen is not a celebration: clear the burst marker so the page does not
+    // throw confetti every time an old campaign is pulled up again.
+    setCelebrateId(null)
+  }, [])
+
   // Preselect the first segment once, without stomping on a later choice.
   const [preselected, setPreselected] = useState(false)
   if (!preselected && segments.length > 0) {
@@ -99,7 +114,7 @@ export function useCampaignForm() {
   return {
     form,
     segments,
-    recent: campaignsQuery.data ?? ([] as GeneratedCampaign[]),
+    recent,
     result,
     isGenerating: generateMutation.isPending,
     error: generateMutation.error instanceof Error
@@ -109,6 +124,10 @@ export function useCampaignForm() {
         : null,
     update,
     generate,
+    // Reopening an older campaign shows it in the same preview pane. It uses the
+    // exact same shape as a fresh result, so future reads only ever see one format.
+    openCampaign,
     dismissResult: () => setResult(null),
+    celebrateId,
   }
 }
