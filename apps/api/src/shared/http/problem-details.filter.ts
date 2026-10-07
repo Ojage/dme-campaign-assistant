@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common'
 import type { ErrorCode, Problem } from '@dme/contracts'
 import type { Response } from 'express'
-import { DomainError } from '../domain/domain.errors'
+import { DomainError, RateLimitedError } from '../domain/domain.errors'
 
 const STATUS_TO_CODE: Readonly<Record<number, ErrorCode>> = {
   400: 'validation_failed',
@@ -36,6 +36,9 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const request = host.switchToHttp().getRequest<{ method: string; url: string }>()
 
     if (exception instanceof DomainError) {
+      if (exception instanceof RateLimitedError) {
+        response.setHeader('Retry-After', String(exception.retryAfterSeconds))
+      }
       response.status(exception.status).json(this.toProblem(exception.status, exception.code, exception.message, exception.fieldErrors))
       return
     }

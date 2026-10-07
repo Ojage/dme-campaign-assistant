@@ -125,13 +125,13 @@ export class ImportCustomers {
     skipped: number
     failures: { row: number; reason: string }[]
   }> {
-    const candidates: Customer[] = []
+    const candidates: Array<{ customer: Customer; row: number }> = []
     const failures: { row: number; reason: string }[] = []
 
     inputs.forEach((input, index) => {
       try {
-        candidates.push(
-          Customer.create({
+        candidates.push({
+          customer: Customer.create({
             name: input.name,
             email: input.email,
             country: input.country,
@@ -140,7 +140,10 @@ export class ImportCustomers {
             lastActivityDate: new Date(input.lastActivityDate),
             status: input.status as CustomerStatus,
           }),
-        )
+          // Tracked per candidate, so a duplicate email is reported on the exact
+          // line that carries it rather than on the first match in the batch.
+          row: index + 1,
+        })
       } catch (error) {
         failures.push({ row: index + 1, reason: describeFailure(error) })
       }
@@ -150,9 +153,15 @@ export class ImportCustomers {
       return { imported: 0, skipped: inputs.length, failures }
     }
 
-    const stored = await this.customers.createMany(candidates)
-    for (const email of stored.duplicates) {
-      failures.push({ row: this.#rowOf(candidates, email), reason: `A customer with the email ${email} already exists.` })
+    const stored = await this.customers.createMany(candidates.map((entry) => entry.customer))
+    // The repository reports every duplicate occurrence (against the database and
+    // within the payload), so every validator-passing candidate carrying a duplicated
+    // email is attributed to its own line.
+    const duplicateEmails = new Set(stored.duplicates)
+    for (const { customer, row } of candidates) {
+      if (duplicateEmails.has(customer.email)) {
+        failures.push({ row, reason: `A customer with the email ${customer.email} already exists.` })
+      }
     }
 
     return {
@@ -160,10 +169,5 @@ export class ImportCustomers {
       skipped: inputs.length - stored.stored.length,
       failures,
     }
-  }
-
-  #rowOf(candidates: readonly Customer[], email: string): number {
-    const index = candidates.findIndex((candidate) => candidate.email === email)
-    return index + 1
   }
 }

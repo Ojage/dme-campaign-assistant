@@ -8,14 +8,16 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseInterceptors,
 } from '@nestjs/common'
 import * as z from 'zod/v4'
 import {
   generateCampaignRequestSchema,
+  listCampaignsQuerySchema,
   updateCampaignStatusRequestSchema,
 } from '@dme/contracts'
-import { zodBody, zodParams } from '../../../../shared/http/zod-validation.pipe'
+import { zodBody, zodParams, zodQuery } from '../../../../shared/http/zod-validation.pipe'
 import { IdempotencyInterceptor, Idempotent } from '../../../../shared/http/idempotency.interceptor'
 import {
   DeleteCampaign,
@@ -58,8 +60,16 @@ export class CampaignsController {
   ) {}
 
   @Get()
-  public async list(): Promise<CampaignResponse[]> {
-    return (await this.listCampaigns.execute()).map(toResponse)
+  public async list(
+    @Query(zodQuery(listCampaignsQuerySchema)) query: z.infer<typeof listCampaignsQuerySchema>,
+  ): Promise<{ items: CampaignResponse[]; total: number; page: number; limit: number }> {
+    const page = await this.listCampaigns.execute(query)
+    return {
+      items: page.items.map(toResponse),
+      total: page.total,
+      page: query.page,
+      limit: query.limit,
+    }
   }
 
   /**

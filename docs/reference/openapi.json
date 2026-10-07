@@ -2211,13 +2211,37 @@
       "get": {
         "operationId": "campaigns.list",
         "summary": "List generated campaigns",
-        "description": "Newest first.",
+        "description": "Newest first, one page at a time.",
         "tags": [
           "Campaigns"
         ],
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
           }
         ],
         "responses": {
@@ -2231,83 +2255,110 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "title": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "message": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "callToAction": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "segmentId": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "segmentName": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "channel": {
-                        "type": "string",
-                        "enum": [
-                          "sms",
-                          "email",
-                          "push"
-                        ]
-                      },
-                      "tone": {
-                        "type": "string",
-                        "enum": [
-                          "professional",
-                          "friendly",
-                          "urgent",
-                          "promotional"
-                        ]
-                      },
-                      "status": {
-                        "type": "string",
-                        "enum": [
-                          "draft",
-                          "ready",
-                          "sent"
-                        ]
-                      },
-                      "objective": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "generatedAt": {
-                        "type": "string",
-                        "minLength": 1
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "message": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "callToAction": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "segmentId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "segmentName": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "channel": {
+                            "type": "string",
+                            "enum": [
+                              "sms",
+                              "email",
+                              "push"
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "professional",
+                              "friendly",
+                              "urgent",
+                              "promotional"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "ready",
+                              "sent"
+                            ]
+                          },
+                          "objective": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "generatedAt": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "message",
+                          "callToAction",
+                          "segmentId",
+                          "segmentName",
+                          "channel",
+                          "tone",
+                          "status",
+                          "objective",
+                          "generatedAt"
+                        ],
+                        "additionalProperties": false
                       }
                     },
-                    "required": [
-                      "id",
-                      "title",
-                      "message",
-                      "callToAction",
-                      "segmentId",
-                      "segmentName",
-                      "channel",
-                      "tone",
-                      "status",
-                      "objective",
-                      "generatedAt"
-                    ],
-                    "additionalProperties": false
-                  }
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "page": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total",
+                    "page",
+                    "limit"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import type { Repository } from 'typeorm'
+import type { PaginationQuery } from '@dme/contracts'
 import type { CampaignRepository } from '../application/ports/campaign.ports'
 import {
   Campaign,
@@ -33,9 +34,15 @@ export class TypeOrmCampaignRepository implements CampaignRepository {
     @InjectRepository(CampaignOrmEntity) private readonly repository: Repository<CampaignOrmEntity>,
   ) {}
 
-  public async list(): Promise<Campaign[]> {
-    const rows = await this.repository.find({ order: { generatedAt: 'DESC' } })
-    return rows.map(toDomain)
+  public async list(query: PaginationQuery): Promise<{ items: Campaign[]; total: number }> {
+    // `findAndCount` runs the row query and the count query consistently, so the
+    // pager's totals could not disagree with the page it just fetched.
+    const [rows, total] = await this.repository.findAndCount({
+      order: { generatedAt: 'DESC' },
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+    })
+    return { items: rows.map(toDomain), total }
   }
 
   public async findById(id: string): Promise<Campaign | null> {

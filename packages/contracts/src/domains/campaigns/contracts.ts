@@ -1,5 +1,5 @@
 import * as z from 'zod/v4'
-import { idSchema, isoDateTimeSchema } from '../shared.js'
+import { idSchema, isoDateTimeSchema, limitSchema, pageSchema } from '../shared.js'
 
 export const campaignChannelSchema = z.enum(['sms', 'email', 'push'])
 export type CampaignChannel = z.infer<typeof campaignChannelSchema>
@@ -40,3 +40,21 @@ export const updateCampaignStatusRequestSchema = z.object({
   status: campaignStatusSchema,
 })
 export type UpdateCampaignStatusRequest = z.infer<typeof updateCampaignStatusRequestSchema>
+
+export const listCampaignsQuerySchema = z.object({
+  page: pageSchema.default(1),
+  limit: limitSchema.default(50),
+})
+export type ListCampaignsQuery = z.infer<typeof listCampaignsQuerySchema>
+
+/**
+ * A page of campaigns, so the history list stays bounded however many generations
+ * the workspace has produced.
+ */
+export const campaignPageSchema = z.object({
+  items: z.array(campaignSchema),
+  total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  limit: z.number().int().min(1),
+})
+export type CampaignPage = z.infer<typeof campaignPageSchema>

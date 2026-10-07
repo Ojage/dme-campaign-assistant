@@ -1,9 +1,10 @@
-import { Body, Controller, Headers, HttpCode, HttpStatus, Post } from '@nestjs/common'
+import { Body, Controller, Headers, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common'
 import { credentialsSchema, refreshTokenSchema } from '@dme/contracts'
 import { SignIn, RefreshSession, SignOut } from '../../application/use-cases/auth.use-cases'
 import type { SessionResult, SessionUser } from '../../application/use-cases/auth.use-cases'
 import { zodBody } from '../../../../shared/http/zod-validation.pipe'
 import { Public } from '../../../../shared/http/authenticated-request'
+import { RateLimit, RateLimitGuard } from '../../../../shared/http/rate-limit.guard'
 
 /**
  * Wire representation of a user. `Date` values are serialised by Nest's JSON
@@ -51,6 +52,8 @@ export class AuthController {
   ) {}
 
   @Public()
+  @RateLimit('sign-in')
+  @UseGuards(RateLimitGuard)
   @Post('sign-in')
   @HttpCode(HttpStatus.OK)
   public async signInEndpoint(

@@ -48,6 +48,25 @@ export class TypeOrmSessionRepository implements SessionRepository {
     return row === null ? null : toStored(row)
   }
 
+  public async consume(tokenHash: string): Promise<{ sessionId: string; userId: string } | null> {
+    // A single conditional UPDATE, so the row is claimed and revoked in one atomic
+    // step: exactly one concurrent refresh presenting this hash can win it.
+    const result = await this.repository
+      .createQueryBuilder()
+      .update(SessionOrmEntity)
+      .set({ revokedAt: new Date() })
+      .where('token_hash = :tokenHash AND revoked_at IS NULL AND expires_at > :now', {
+        tokenHash,
+        now: new Date(),
+      })
+      .returning(['id', 'user_id'])
+      .execute()
+
+    const raw = result.raw as Array<{ id: string; user_id: string }> | undefined
+    const row = raw?.[0]
+    return row === undefined ? null : { sessionId: row.id, userId: row.user_id }
+  }
+
   public async revoke(id: string): Promise<void> {
     await this.repository.update({ id }, { revokedAt: new Date() })
   }

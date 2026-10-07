@@ -1,40 +1,115 @@
 import { ConflictError, ValidationError } from '../domain/domain.errors'
-import type { IdempotencyStore, IdempotentResponse } from '../application/ports/idempotency-store.port'
+import type { IdempotencyStore, IdempotentResponse, IdempotencyClaim, IdempotencyStatus } from '../application/ports/idempotency-store.port'
 import {
   assertSameRequest,
+  coordinate,
   fingerprint,
   findReplay,
   isReplayable,
   parseKey,
-  recordIfSuccessful,
 } from './idempotency'
 
-/** Records what it was asked, so the policy can be asserted rather than inferred. */
+interface FakeRow {
+  readonly id: string
+  status: 'processing' | 'completed'
+  fingerprint: string
+  statusCode: number | null
+  body: unknown
+  readonly createdAt: Date
+}
+
+/** In-memory store with the same unique-index claim semantics as the real one. */
 class FakeStore implements IdempotencyStore {
-  public readonly seen: Array<{ scope: string; key: string }> = []
-  private readonly rows = new Map<string, IdempotentResponse>()
+  private readonly rows = new Map<string, FakeRow>()
+  private nextId = 0
 
-  public constructor(private readonly existing: IdempotentResponse | null = null) {}
-
-  public async find(scope: string, key: string): Promise<IdempotentResponse | null> {
-    this.seen.push({ scope, key })
-    return this.existing ?? this.rows.get(`${scope}:${key}`) ?? null
+  public constructor(initial: Array<[string, FakeRow]> = []) {
+    for (const [key, row] of initial) this.rows.set(key, row)
   }
 
-  public async remember(
+  public async find(scope: string, key: string): Promise<IdempotentResponse | null> {
+    const row = this.rows.get(this.address(scope, key))
+    if (row === undefined || row.status !== 'completed') return null
+    return this.toResponse(row)
+  }
+
+  public async claim(scope: string, key: string, fingerprint: string): Promise<IdempotencyClaim> {
+    const address = this.address(scope, key)
+    const existing = this.rows.get(address)
+    if (existing !== undefined) {
+      if (existing.status === 'completed') {
+        return { owner: false, completed: this.toResponse(existing), processingSince: null, id: null }
+      }
+      return { owner: false, completed: null, processingSince: existing.createdAt, id: null }
+    }
+    const row: FakeRow = {
+      id: `row-${++this.nextId}`,
+      status: 'processing',
+      fingerprint,
+      statusCode: null,
+      body: null,
+      createdAt: new Date(),
+    }
+    this.rows.set(address, row)
+    return { owner: true, completed: null, processingSince: null, id: row.id }
+  }
+
+  public async statusOf(scope: string, key: string): Promise<IdempotencyStatus> {
+    const row = this.rows.get(this.address(scope, key))
+    if (row === undefined) return { state: 'absent' }
+    if (row.status === 'processing') {
+      return { state: 'processing', fingerprint: row.fingerprint, processingSince: row.createdAt }
+    }
+    return { state: 'completed', response: this.toResponse(row) }
+  }
+
+  public async complete(
     scope: string,
     key: string,
+    id: string,
     response: IdempotentResponse,
-  ): Promise<{ response: IdempotentResponse; inserted: boolean }> {
-    const id = `${scope}:${key}`
-    const stored = this.existing ?? this.rows.get(id)
-    if (stored !== undefined) return { response: stored, inserted: false }
-    this.rows.set(id, response)
-    return { response, inserted: true }
+  ): Promise<void> {
+    const row = this.rows.get(this.address(scope, key))
+    if (row === undefined || row.id !== id || row.status !== 'processing') return
+    row.status = 'completed'
+    row.fingerprint = response.fingerprint
+    row.statusCode = response.statusCode
+    row.body = response.body
+  }
+
+  public async release(scope: string, key: string, id?: string): Promise<void> {
+    const row = this.rows.get(this.address(scope, key))
+    if (row === undefined || row.status !== 'processing') return
+    if (id !== undefined && row.id !== id) return
+    this.rows.delete(this.address(scope, key))
+  }
+
+  public async prune(_now: Date): Promise<number> {
+    return 0
   }
 
   public stored(scope: string, key: string): IdempotentResponse | null {
-    return this.rows.get(`${scope}:${key}`) ?? null
+    const row = this.rows.get(this.address(scope, key))
+    return row === undefined || row.status !== 'completed' ? null : this.toResponse(row)
+  }
+
+  public seedProcessing(scope: string, key: string, fingerprint: string, ageMs: number): void {
+    this.rows.set(this.address(scope, key), {
+      id: `row-${++this.nextId}`,
+      status: 'processing',
+      fingerprint,
+      statusCode: null,
+      body: null,
+      createdAt: new Date(Date.now() - ageMs),
+    })
+  }
+
+  private toResponse(row: FakeRow): IdempotentResponse {
+    return { fingerprint: row.fingerprint, statusCode: row.statusCode as number, body: row.body as IdempotentResponse['body'] }
+  }
+
+  private address(scope: string, key: string): string {
+    return `${scope}:${key}`
   }
 }
 
@@ -154,62 +229,130 @@ describe('findReplay', () => {
   })
 
   it('returns the recorded response when the request matches', async () => {
-    const store = new FakeStore(recorded)
+    const store = new FakeStore()
+    const claim = await store.claim('user-1', 'k1', 'abc123')
+    await store.complete('user-1', 'k1', claim.id as string, recorded)
     await expect(findReplay(store, 'user-1', 'k1', 'abc123')).resolves.toEqual(recorded)
   })
 
+  it('ignores a processing row, which is not a finished answer', async () => {
+    const store = new FakeStore()
+    store.seedProcessing('user-1', 'k1', 'abc123', 0)
+    await expect(findReplay(store, 'user-1', 'k1', 'abc123')).resolves.toBeNull()
+  })
+
   it('refuses to replay a key that was used for a different request', async () => {
-    const store = new FakeStore(recorded)
+    const store = new FakeStore()
+    const claim = await store.claim('user-1', 'k1', 'abc123')
+    await store.complete('user-1', 'k1', claim.id as string, recorded)
     await expect(findReplay(store, 'user-1', 'k1', 'different')).rejects.toThrow(ConflictError)
   })
 })
 
-describe('recordIfSuccessful', () => {
-  it('records a success and leaves the caller to answer with its own response', async () => {
+describe('coordinate', () => {
+  const run = (store: IdempotencyStore, overrides: Partial<{ statusCode: number }> = {}) => {
+    let calls = 0
+    const attempt = {
+      store,
+      scope: 'user-1',
+      key: 'k1',
+      digest: 'digest',
+      execute: async () => {
+        calls += 1
+        return { statusCode: overrides.statusCode ?? 201, body: { id: `campaign-${calls}` } }
+      },
+    }
+    return { attempt, calls: () => calls }
+  }
+
+  const fast = { pollIntervalMs: 5, waitTimeoutMs: 250, staleAfterMs: 50 }
+
+  it('runs the first use of a key and records the response', async () => {
     const store = new FakeStore()
-    await expect(
-      recordIfSuccessful(store, 'user-1', 'k1', 'digest', 201, { id: 'campaign-1' }),
-    ).resolves.toBeNull()
-    expect(store.stored('user-1', 'k1')).toEqual({
-      fingerprint: 'digest',
-      statusCode: 201,
-      body: { id: 'campaign-1' },
-    })
+    const { attempt } = run(store)
+    const outcome = await coordinate(store, attempt)
+    expect(outcome).toEqual({ replay: false, statusCode: 201, body: { id: 'campaign-1' } })
+    expect(store.stored('user-1', 'k1')).toEqual({ fingerprint: 'digest', statusCode: 201, body: { id: 'campaign-1' } })
   })
 
-  it('records a 200', async () => {
+  it('answers a repeated identical request with a replay, without running it again', async () => {
     const store = new FakeStore()
-    await recordIfSuccessful(store, 'user-1', 'k1', 'digest', 200, { ok: true })
-    expect(store.stored('user-1', 'k1')?.statusCode).toBe(200)
+    const { attempt, calls } = run(store)
+    await coordinate(store, attempt)
+    const replay = await coordinate(store, attempt)
+    expect(replay).toEqual({ replay: true, statusCode: 201, body: { id: 'campaign-1' } })
+    expect(calls()).toBe(1)
   })
 
-  // The property the whole mechanism rests on: a failed attempt must stay retryable.
-  it('does not record a failure, so the same key can be retried', async () => {
+  it('rejects a key reused for a different request', async () => {
     const store = new FakeStore()
-    await expect(
-      recordIfSuccessful(store, 'user-1', 'k1', 'digest', 503, { error: 'unavailable' }),
-    ).resolves.toBeNull()
+    const { attempt } = run(store)
+    await coordinate(store, attempt)
+    await expect(coordinate(store, { ...attempt, digest: 'other' })).rejects.toThrow(ConflictError)
+  })
+
+  it('frees the key when the handler fails, so the retry runs again', async () => {
+    const store = new FakeStore()
+    const { attempt } = run(store)
+    const failing = {
+      ...attempt,
+      execute: async () => {
+        throw new Error('model unavailable')
+      },
+    }
+    await expect(coordinate(store, failing)).rejects.toThrow('model unavailable')
+    expect(store.stored('user-1', 'k1')).toBeNull()
+    const retried = await coordinate(store, attempt)
+    expect(retried.replay).toBe(false)
+  })
+
+  it('does not record a non-replayable status, keeping the key retryable', async () => {
+    const store = new FakeStore()
+    const { attempt } = run(store, { statusCode: 503 })
+    await coordinate(store, attempt)
     expect(store.stored('user-1', 'k1')).toBeNull()
   })
 
-  it('does not record a redirect', async () => {
+  it('converges two concurrent requests on one execution and one answer', async () => {
     const store = new FakeStore()
-    await recordIfSuccessful(store, 'user-1', 'k1', 'digest', 302, null)
-    expect(store.stored('user-1', 'k1')).toBeNull()
+    const callA = () => new Promise((resolve) => setTimeout(resolve, 20))
+    let executions = 0
+    const make = () =>
+      coordinate(store, {
+        scope: 'user-1',
+        key: 'k1',
+        digest: 'digest',
+        execute: async () => {
+          executions += 1
+          await callA()
+          return { statusCode: 201, body: { id: `campaign-${executions}` } }
+        },
+      }, fast)
+
+    const [a, b] = await Promise.all([make(), make()])
+    // Exactly one request ran the costly handler, whichever claimed first.
+    expect(executions).toBe(1)
+    expect([a.replay, b.replay].filter(Boolean).length).toBe(1)
+    expect(a.body).toEqual(b.body)
   })
 
-  it('hands back the winner response when the key was already taken', async () => {
-    const store = new FakeStore(recorded)
-    await expect(
-      recordIfSuccessful(store, 'user-1', 'k1', 'abc123', 201, { id: 'campaign-mine' }),
-    ).resolves.toEqual(recorded)
+  it('takes over a claim whose owner never finished', async () => {
+    const store = new FakeStore()
+    // A claim left processing long past the staleness threshold, as though the owner
+    // died mid-flight.
+    store.seedProcessing('user-1', 'k1', 'digest', 10_000)
+    const { attempt } = run(store)
+    const outcome = await coordinate(store, attempt, fast)
+    expect(outcome.replay).toBe(false)
+    expect(store.stored('user-1', 'k1')?.body).toEqual({ id: 'campaign-1' })
   })
 
-  it('keeps keys separate per caller', async () => {
+  it('reports an ongoing request after the wait window instead of looping forever', async () => {
     const store = new FakeStore()
-    await recordIfSuccessful(store, 'user-1', 'k1', 'digest', 201, { id: 'a' })
-    await recordIfSuccessful(store, 'user-2', 'k1', 'digest', 201, { id: 'b' })
-    expect(store.stored('user-1', 'k1')?.body).toEqual({ id: 'a' })
-    expect(store.stored('user-2', 'k1')?.body).toEqual({ id: 'b' })
+    store.seedProcessing('user-1', 'k1', 'digest', 0)
+    const { attempt } = run(store)
+    await expect(coordinate(store, attempt, { ...fast, staleAfterMs: 5_000, waitTimeoutMs: 30 })).rejects.toThrow(
+      ConflictError,
+    )
   })
 })

@@ -64,6 +64,15 @@ export interface StoredSession {
 export interface SessionRepository {
   create(session: { userId: string; tokenHash: string; expiresAt: Date; userAgent: string | null }): Promise<StoredSession>
   findActiveByTokenHash(tokenHash: string): Promise<StoredSession | null>
+  /**
+   * Atomically revokes the active session for a token hash and returns its owner.
+   *
+   * The consume is a single conditional UPDATE, so when two requests present the
+   * same refresh token at once exactly one of them wins the row; the loser gets
+   * `null`. That is what stops a refresh-token race from minting two sibling
+   * sessions from one token.
+   */
+  consume(tokenHash: string): Promise<{ sessionId: string; userId: string } | null>
   revoke(id: string): Promise<void>
   revokeAllForUser(userId: string): Promise<void>
   deleteExpired(now: Date): Promise<number>

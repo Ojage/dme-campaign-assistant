@@ -17,6 +17,7 @@ import { TypeOrmUserRepository } from './infrastructure/typeorm-user.repository'
 import { AuthController } from './interface/http/auth.controller'
 import { AccessTokenGuard } from '../../shared/http/access-token.guard'
 import { ProblemDetailsFilter } from '../../shared/http/problem-details.filter'
+import { RateLimitGuard, RateLimitService } from '../../shared/http/rate-limit.guard'
 import { SessionOrmEntity } from '../../shared/infrastructure/persistence/session.orm-entity'
 import { UserOrmEntity } from '../../shared/infrastructure/persistence/user.orm-entity'
 
@@ -44,6 +45,10 @@ import { UserOrmEntity } from '../../shared/infrastructure/persistence/user.orm-
     // factory is what gives it the config and makes it injectable.
     { provide: AUTH_PORTS.tokenService, inject: [ENV], useFactory: (config: AppConfig) => new JwtTokenService(config) },
     { provide: AUTH_PORTS.sessionRepository, useClass: TypeOrmSessionRepository },
+    // Rate limiting is provided alongside auth because every limited route today is
+    // a public auth endpoint.
+    RateLimitService,
+    RateLimitGuard,
     { provide: APP_GUARD, useClass: AccessTokenGuard },
     { provide: APP_FILTER, useClass: ProblemDetailsFilter },
   ],

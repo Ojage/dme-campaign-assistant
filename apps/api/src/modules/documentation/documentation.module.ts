@@ -21,7 +21,10 @@ export class OpenApiProvider {
 
   public build(): OpenApiDocument {
     return buildOpenApiDocument({
-      serverUrl: `/${this.config.apiPrefix}/${API_VERSION}`,
+      // Paths already carry the version segment (`/v1/...`), so the server URL must
+      // stop at the prefix. Publishing `/api/v1` alongside versioned paths would
+      // make every documented request hit `/api/v1/v1/...` and 404 in Try It Out.
+      serverUrl: `/${this.config.apiPrefix}`,
       title: 'Campaign Assistant API',
       version: API_VERSION,
     })

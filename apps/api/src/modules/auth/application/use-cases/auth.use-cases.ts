@@ -104,19 +104,19 @@ export class RefreshSession {
   public async execute(refreshToken: string): Promise<SessionResult> {
     const claims = this.readRefreshToken(refreshToken)
 
-    const session = await this.sessions.findActiveByTokenHash(this.tokens.hashRefreshToken(refreshToken))
-    if (session === null || session.expiresAt.getTime() <= Date.now()) {
+    // Consuming is atomic: one conditional UPDATE revokes the active session and
+    // returns its owner, and exactly one concurrent refresh presenting this token
+    // can win it. Every other caller sees `null` and is treated as expired, which
+    // is what stops a refresh race from minting two sibling sessions.
+    const consumed = await this.sessions.consume(this.tokens.hashRefreshToken(refreshToken))
+    if (consumed === null) {
       throw new SessionExpiredError()
     }
 
     const user = await this.users.findById(claims.sub)
     if (user === null || !user.isActive) {
-      await this.sessions.revoke(session.id)
       throw new SessionExpiredError()
     }
-
-    // Rotation: the presented token dies with the new session being issued.
-    await this.sessions.revoke(session.id)
 
     const access = this.tokens.issueAccessToken({ sub: user.id, email: user.email, role: user.role })
     const refresh = this.tokens.issueRefreshToken({ sub: user.id })

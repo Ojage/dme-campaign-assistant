@@ -1,18 +1,17 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm'
 
 /**
- * The record of one completed request that a client may repeat safely.
+ * The record of one request that a client may repeat safely.
  *
- * The response body is stored rather than a resource id so a replay is answered
- * without touching the domain at all: the repeat is byte-for-byte what the first
- * attempt returned, which is the whole point of asking for an idempotency key.
+ * The row exists in two states. While the first request is still running it sits
+ * as a `processing` placeholder, which is what stops a concurrent duplicate from
+ * running a second time: the duplicate sees the claim and waits instead of
+ * repeating the side effect. When the owner finishes, the row turns `completed`
+ * and carries the response body, so a replay is answered byte-for-byte without
+ * touching the domain at all.
  *
- * The unique index on `(scope, key)` decides which of two concurrent identical
- * requests owns the recorded response, so both callers converge on one answer.
- *
- * It does not stop the second request from also *running*: the row is written after
- * the handler completes, so a duplicate arriving mid-generation generates as well and
- * the two responses are reconciled afterwards. See `TypeOrmIdempotencyStore`.
+ * The unique index on `(scope, key)` decides which of two concurrent claims owns
+ * the key; the owner is the one whose inserted row the winner kept.
  */
 @Entity({ name: 'idempotency_records' })
 @Index(['scope', 'key'], { unique: true })
@@ -20,6 +19,10 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 
 export class IdempotencyRecordOrmEntity {
   @PrimaryGeneratedColumn('uuid')
   public id!: string
+
+  /** `processing` while the first request is running, `completed` once recorded. */
+  @Column({ type: 'varchar', length: 16, default: 'completed' })
+  public status!: 'processing' | 'completed'
 
   /**
    * Who the key belongs to. Scoping to the caller is what stops one workspace
@@ -35,22 +38,23 @@ export class IdempotencyRecordOrmEntity {
   @Column({ type: 'varchar', length: 64 })
   public fingerprint!: string
 
-  @Column({ type: 'int' })
-  public statusCode!: number
+  /** Null while `processing`; set when the owner records its response. */
+  @Column({ type: 'int', nullable: true })
+  public statusCode!: number | null
 
   /**
    * Held as `object` rather than the precise `JsonValue` from the port: TypeORM
    * builds a recursive `DeepPartial` of this type, and feeding it a recursive alias
    * sends the compiler into an infinitely deep instantiation. The write side casts
-   * from `JsonValue`, which is checked there.
+   * from `JsonValue`, which is checked there. Null while `processing`.
    */
-  @Column({ type: 'jsonb' })
-  public body!: object
+  @Column({ type: 'jsonb', nullable: true })
+  public body!: object | null
 
   /**
-   * Age at which the record stops being replayed. Nothing prunes it yet, so records
-   * accumulate for the lifetime of the table; the index is here so the purge lands in
-   * one place when it does.
+   * Age at which a completed record stops being replayed. `prune` deletes rows
+   * older than this on idempotent traffic; the index exists so the purge lands in
+   * one place.
    */
   @CreateDateColumn({ type: 'timestamptz' })
   public createdAt!: Date

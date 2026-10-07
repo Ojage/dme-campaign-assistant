@@ -5,6 +5,7 @@ import type { CampaignRepository, SegmentResolver } from '../ports/campaign.port
 import { CAMPAIGN_PORTS } from '../ports/campaign.ports'
 import { STRUCTURED_MODEL } from '../../../../shared/application/ports/structured-model.port'
 import type { StructuredModel } from '../../../../shared/application/ports/structured-model.port'
+import type { PaginationQuery } from '@dme/contracts'
 import { Inject, Injectable } from '@nestjs/common'
 
 export interface GenerateCampaignInput {
@@ -55,8 +56,8 @@ export class GenerateCampaign {
 export class ListCampaigns {
   public constructor(@Inject(CAMPAIGN_PORTS.repository) private readonly campaigns: CampaignRepository) {}
 
-  public execute(): Promise<Campaign[]> {
-    return this.campaigns.list()
+  public execute(query: PaginationQuery): Promise<{ items: Campaign[]; total: number }> {
+    return this.campaigns.list(query)
   }
 }
 

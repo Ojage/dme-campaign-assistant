@@ -70,6 +70,17 @@ export class InvalidCredentialsError extends DomainError {
   }
 }
 
+/** Too many requests against a liberal endpoint, mapped to 429 with Retry-After. */
+export class RateLimitedError extends DomainError {
+  /** Seconds the client should wait before trying again; feeds the Retry-After header. */
+  public constructor(
+    message = 'Too many requests. Try again shortly.',
+    public readonly retryAfterSeconds = 60,
+  ) {
+    super(message, 'rate_limited', 429)
+  }
+}
+
 export class InactiveAccountError extends DomainError {
   public constructor(message = 'This account has been deactivated.') {
     super(message, 'forbidden', 403)

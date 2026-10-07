@@ -1,7 +1,8 @@
 import type { Campaign, CampaignStatus } from '../../domain/campaign.entity'
+import type { PaginationQuery } from '@dme/contracts'
 
 export interface CampaignRepository {
-  list(): Promise<Campaign[]>
+  list(query: PaginationQuery): Promise<{ items: Campaign[]; total: number }>
   findById(id: string): Promise<Campaign | null>
   save(campaign: Campaign): Promise<Campaign>
   updateStatus(id: string, status: CampaignStatus): Promise<Campaign | null>

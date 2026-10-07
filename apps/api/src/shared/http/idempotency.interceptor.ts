@@ -6,15 +6,7 @@ import type { Response } from 'express'
 import { IDEMPOTENCY_STORE } from '../application/ports/idempotency-store.port'
 import type { IdempotencyStore, JsonValue } from '../application/ports/idempotency-store.port'
 import type { AuthenticatedRequest } from './authenticated-request'
-import {
-  fingerprint,
-  findReplay,
-  IDEMPOTENCY_KEY_HEADER,
-  IDEMPOTENCY_REPLAYED_HEADER,
-  IDEMPOTENT_ROUTE,
-  parseKey,
-  recordIfSuccessful,
-} from './idempotency'
+import { coordinate, fingerprint, IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_REPLAYED_HEADER, IDEMPOTENT_ROUTE, parseKey } from './idempotency'
 
 /** Opts a route into idempotent replay. The route must be authenticated. */
 export function Idempotent(): MethodDecorator {
@@ -64,30 +56,25 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     const digest = fingerprint(request.method, request.path ?? '', request.body)
 
-    const replayed = await findReplay(this.store, scope, key, digest)
-    if (replayed !== null) {
-      response.setHeader(IDEMPOTENCY_REPLAYED_HEADER, 'true')
-      // The recorded status is restored rather than left to `@HttpCode`, so a replay
-      // stays byte-for-byte what the first caller received even if the route's
-      // declared status changes in a later release.
-      response.status(replayed.statusCode)
-      return of(replayed.body)
-    }
-
-    // A Nest handler resolves with the value its controller returned, which is the
-    // body about to be serialised — so it is JSON by construction.
-    const body = (await lastValueFrom(next.handle())) as JsonValue
-
-    // By the time the handler has resolved, Nest has already applied `@HttpCode(...)`
-    // to the response, so this is the status the caller is about to be sent.
-    const authoritative = await recordIfSuccessful(
-      this.store,
+    const outcome = await coordinate(this.store, {
       scope,
       key,
       digest,
-      response.statusCode,
-      body,
-    )
-    return of(authoritative === null ? body : authoritative.body)
+      execute: async () => {
+        // A Nest handler resolves with the value its controller returned, which is the
+        // body about to be serialised — so it is JSON by construction.
+        const body = (await lastValueFrom(next.handle())) as JsonValue
+        // By the time the handler has resolved, Nest has already applied `@HttpCode(...)`
+        // to the response, so this is the status the caller is about to be sent.
+        return { statusCode: response.statusCode, body }
+      },
+    })
+
+    if (outcome.replay) response.setHeader(IDEMPOTENCY_REPLAYED_HEADER, 'true')
+    // A replay restores the recorded status rather than trusting `@HttpCode`, so it
+    // stays byte-for-byte what the first caller received even if the route's declared
+    // status changes in a later release.
+    response.status(outcome.statusCode)
+    return of(outcome.body)
   }
 }
