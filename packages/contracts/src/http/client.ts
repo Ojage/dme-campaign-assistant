@@ -96,11 +96,17 @@ async function* readEventStream(body: ReadableStream<Uint8Array>): AsyncGenerato
   const decoder = new TextDecoder()
   let buffer = ''
 
+  // Reducers the accumulated text to the LF-only line endings the SSE spec uses,
+  // so `\n\n` is the only frame separator. A server emitting `\r\n` frame
+  // boundaries would otherwise never yield a complete event. Re-applied to the
+  // whole buffer each chunk so a `\r\n` split across two chunks is still caught.
+  const normalize = (value: string): string => value.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
   try {
     for (;;) {
       const { done, value } = await reader.read()
       if (done) break
-      buffer += decoder.decode(value, { stream: true })
+      buffer = normalize(buffer + decoder.decode(value, { stream: true }))
 
       let boundary = buffer.indexOf('\n\n')
       while (boundary !== -1) {

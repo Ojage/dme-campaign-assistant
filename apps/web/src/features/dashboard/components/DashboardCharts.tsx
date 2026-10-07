@@ -22,6 +22,18 @@ import { ChartEmptyState } from './ChartEmptyState'
 
 const AXIS_STYLE = { fontSize: 12, fill: 'hsl(var(--muted-foreground))' } as const
 
+/**
+ * Compact axis labels that adapt to the value range. Recharts picks "nice" ticks
+ * for any domain, so the label must not assume millions — otherwise an unrealised
+ * store shows "0.0M" for every tick.
+ */
+function formatAxisTick(value: number): string {
+  const abs = Math.abs(value)
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  if (abs >= 1_000) return `${Math.round(value / 1_000)}K`
+  return formatNumber(Math.round(value))
+}
+
 const TOOLTIP_STYLE = {
   backgroundColor: 'hsl(var(--card))',
   border: '1px solid hsl(var(--border))',
@@ -93,7 +105,7 @@ export function RevenueTrendCard({ data, months, onMonthsChange }: RevenueTrendC
                 tick={AXIS_STYLE}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(value: number) => `${(value / 1_000_000).toFixed(1)}M`}
+                tickFormatter={formatAxisTick}
               />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
@@ -146,7 +158,7 @@ export function SpendByCountryCard({ data }: { data: Array<{ country: string; sp
                 tick={AXIS_STYLE}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(value: number) => `${(value / 1_000_000).toFixed(1)}M`}
+                tickFormatter={formatAxisTick}
               />
               <YAxis type="category" dataKey="country" tick={AXIS_STYLE} axisLine={false} tickLine={false} width={100} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [formatXaf(Number(value)), t('charts.spend')]} />

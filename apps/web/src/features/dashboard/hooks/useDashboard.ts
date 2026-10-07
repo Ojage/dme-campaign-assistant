@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useQueries } from '@tanstack/react-query'
+import { keepPreviousData, useQueries } from '@tanstack/react-query'
 import {
   getActivityTrend,
   getCustomerHealth,
@@ -16,16 +16,27 @@ import type {
   CustomerTopList,
 } from '@/features/customers/types/customer.types'
 
-export interface DashboardData {
-  kpis: CustomerKPIs | null
-  spendByCountry: Array<{ country: string; spend: number }>
-  revenueTrend: ActivityTrendPoint[]
-  health: CustomerHealth | null
-  topCustomers: CustomerTopList['items']
-  topTotalValue: number
-  segmentsSummary: { count: number; totalAudience: number; averageAudience: number } | null
+/** One card's view of its query: data plus the loading and error it owns. */
+export interface DashboardSlice<T> {
+  data: T
   isLoading: boolean
   error: string | null
+}
+
+function sliceOf<T>(data: T, isLoading: boolean, error: unknown | null): DashboardSlice<T> {
+  return { data, isLoading, error: error instanceof Error ? error.message : null }
+}
+
+export interface DashboardData {
+  kpis: DashboardSlice<CustomerKPIs | null>
+  spendByCountry: DashboardSlice<Array<{ country: string; spend: number }>>
+  revenueTrend: DashboardSlice<ActivityTrendPoint[]>
+  health: DashboardSlice<CustomerHealth | null>
+  topCustomers: DashboardSlice<CustomerTopList['items']>
+  topTotalValue: number
+  segmentsSummary: DashboardSlice<{ count: number; totalAudience: number; averageAudience: number } | null>
+  /** Any card still loading; used for page-level skeletons that replace nothing. */
+  isLoading: boolean
   reload: () => void
 }
 
@@ -35,7 +46,11 @@ export interface DashboardData {
  * Every card reads the same cache the customers and segments pages fill, so a
  * write there (import, save a segment) updates the dashboard without this hook
  * knowing that a write happened. The trend horizon is a query parameter, so
- * flipping the 6/12-month toggle issues a new keyed query rather than a refetch.
+ * flipping the 6/12-month toggle issues a new keyed query rather than a refetch;
+ * `keepPreviousData` keeps the old horizon on screen while the new one loads.
+ *
+ * Each card gets its own slice so a failing aggregate (say, a flaky LLM health
+ * endpoint) shows a per-card error instead of hiding the whole dashboard.
  */
 export function useDashboard(months: number): DashboardData {
   const queries = useQueries({
@@ -48,6 +63,7 @@ export function useDashboard(months: number): DashboardData {
       {
         queryKey: queryKeys.customers.activityTrend(months),
         queryFn: () => getActivityTrend(months),
+        placeholderData: keepPreviousData,
       },
       { queryKey: queryKeys.customers.health, queryFn: getCustomerHealth },
       { queryKey: queryKeys.customers.top, queryFn: () => getTopCustomers(5) },
@@ -64,18 +80,15 @@ export function useDashboard(months: number): DashboardData {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const failure = queries.find((query) => query.error instanceof Error)?.error
-
   return {
-    kpis: kpisQuery.data ?? null,
-    spendByCountry: spendQuery.data ?? [],
-    revenueTrend: trendQuery.data ?? [],
-    health: healthQuery.data ?? null,
-    topCustomers: topQuery.data?.items ?? [],
+    kpis: sliceOf(kpisQuery.data ?? null, kpisQuery.isPending, kpisQuery.error),
+    spendByCountry: sliceOf(spendQuery.data ?? [], spendQuery.isPending, spendQuery.error),
+    revenueTrend: sliceOf(trendQuery.data ?? [], trendQuery.isPending, trendQuery.error),
+    health: sliceOf(healthQuery.data ?? null, healthQuery.isPending, healthQuery.error),
+    topCustomers: sliceOf(topQuery.data?.items ?? [], topQuery.isPending, topQuery.error),
     topTotalValue: topQuery.data?.totalValue ?? 0,
-    segmentsSummary: segmentsQuery.data ?? null,
+    segmentsSummary: sliceOf(segmentsQuery.data ?? null, segmentsQuery.isPending, segmentsQuery.error),
     isLoading: queries.some((query) => query.isPending),
-    error: failure instanceof Error ? failure.message : null,
     reload,
   }
 }

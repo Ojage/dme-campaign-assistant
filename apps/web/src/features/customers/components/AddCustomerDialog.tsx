@@ -42,7 +42,7 @@ const EMPTY_FORM = {
 /** Manual single-customer creation. */
 export function AddCustomerDialog({ open, onOpenChange, countries }: AddCustomerDialogProps) {
   const { t } = useTranslation('customers')
-  const { isSubmitting, error, setError, submitNewCustomer } = useCustomerMutations()
+  const { isSubmitting, error, errorCode, setError, submitNewCustomer } = useCustomerMutations()
   const [form, setForm] = useState(EMPTY_FORM)
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({})
 
@@ -84,8 +84,8 @@ export function AddCustomerDialog({ open, onOpenChange, countries }: AddCustomer
       totalAmountSpent: Number(form.amount),
       lastActivityDate: form.date,
     }
-    const ok = await submitNewCustomer(payload)
-    if (!ok) return
+    const result = await submitNewCustomer(payload)
+    if (!result.ok) return
     toast.success(t('add.success', { name: payload.name }))
     onOpenChange(false)
   }
@@ -178,7 +178,7 @@ export function AddCustomerDialog({ open, onOpenChange, countries }: AddCustomer
 
         {error ? (
           <p className="text-sm text-destructive">
-            {error === 'duplicate' ? t('add.validation.emailTaken') : t('add.validation.email')}
+            {errorCode === 'conflict' ? t('add.validation.emailTaken') : error}
           </p>
         ) : null}
 

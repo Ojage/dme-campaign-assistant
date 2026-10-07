@@ -9,8 +9,15 @@
 import { apiClient } from '@/lib/api/apiClient'
 import type { CampaignFormData, GeneratedCampaign } from '@/features/campaigns/types/campaign.types'
 
-export function getCampaigns(): Promise<GeneratedCampaign[]> {
-  return apiClient.call('campaigns.list')
+export interface CampaignPage {
+  items: GeneratedCampaign[]
+  total: number
+  page: number
+  limit: number
+}
+
+export function getCampaigns(limit = 100): Promise<CampaignPage> {
+  return apiClient.call('campaigns.list', { query: { page: 1, limit } })
 }
 
 /**

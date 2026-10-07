@@ -3,7 +3,71 @@ import type { NewCustomerPayload } from '@/features/customers/types/customer.typ
 export interface CsvParseResult {
   rows: NewCustomerPayload[]
   rowLines: number[]
-  errors: Array<{ line: number; reason: string }>
+}
+
+function isBlankRecord(record: string[]): boolean {
+  return record.every((cell) => cell === '')
+}
+
+/**
+ * Splits CSV text into records of fields, honouring RFC 4180 quoting:
+ * fields wrapped in double quotes may contain commas, newlines, and a literal
+ * quote written as `""`. Everything outside quotes is kept verbatim apart from
+ * the delimiter and the `\r` of a `\r\n` line ending. This replaces the old
+ * `line.split(',')`, which mangled any quoted field containing a comma.
+ */
+function parseCsvRecords(text: string): string[][] {
+  const records: string[][] = []
+  let record: string[] = []
+  let field = ''
+  let inQuotes = false
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i]
+    if (inQuotes) {
+      if (char === '"') {
+        const next = text[i + 1]
+        if (next === '"') {
+          field += '"'
+          i += 1
+        } else {
+          inQuotes = false
+        }
+      } else {
+        field += char
+      }
+    } else if (char === '"' && field === '') {
+      inQuotes = true
+    } else if (char === ',') {
+      record.push(field)
+      field = ''
+    } else if (char === '\n') {
+      record.push(field)
+      field = ''
+      records.push(record)
+      record = []
+    } else if (char === '\r') {
+      // Ignored outside quotes; a `\r\n` line ending is completed by the `\n`.
+    } else {
+      field += char
+    }
+  }
+
+  record.push(field)
+  records.push(record)
+  return records
+}
+
+/** Maps a free-form status cell onto the three allowed values; defaults to `active`. */
+function normalizeStatus(cell: string): NewCustomerPayload['status'] {
+  switch (cell.trim().toLowerCase()) {
+    case 'inactive':
+      return 'inactive'
+    case 'churned':
+      return 'churned'
+    default:
+      return 'active'
+  }
 }
 
 /**
@@ -13,34 +77,36 @@ export interface CsvParseResult {
  * with line numbers so import errors can point back to the source row.
  */
 export function parseCustomersCsv(text: string): CsvParseResult {
-  const result: CsvParseResult = { rows: [], rowLines: [], errors: [] }
-  const lines = text.split(/\r?\n/)
+  const rows: NewCustomerPayload[] = []
+  const rowLines: number[] = []
 
   let dataIndex = 0
-  lines.forEach((rawLine, index) => {
-    const line = rawLine.trim()
-    if (line.length === 0) return
-
-    const cells = line.split(',').map((cell) => cell.trim())
-    const isFirstContentRow = dataIndex === 0
-    if (isFirstContentRow && cells.some((cell) => cell.toLowerCase() === 'email')) {
+  parseCsvRecords(text).forEach((rawRecord, index) => {
+    const record = rawRecord.map((cell) => cell.trim())
+    if (isBlankRecord(record)) {
+      // Blank lines carry no data but still occupy a file line; the header may
+      // also follow a leading blank line, so they are skipped rather than
+      // treated as a customer row.
+      return
+    }
+    if (dataIndex === 0 && record.some((cell) => cell.toLowerCase() === 'email')) {
       dataIndex += 1
       return
     }
     dataIndex += 1
 
-    const [name = '', email = '', country = '', transactions = '', amount = '', date = '', status = ''] = cells
-    result.rows.push({
+    const [name = '', email = '', country = '', transactions = '', amount = '', date = '', status = ''] = record
+    rows.push({
       name,
       email,
       country,
       totalTransactions: Number(transactions),
       totalAmountSpent: Number(amount),
       lastActivityDate: date.length > 0 ? date : new Date().toISOString().slice(0, 10),
-      status: (status.length > 0 ? status : 'active') as NewCustomerPayload['status'],
+      status: normalizeStatus(status),
     })
-    result.rowLines.push(index + 1)
+    rowLines.push(index + 1)
   })
 
-  return result
+  return { rows, rowLines }
 }

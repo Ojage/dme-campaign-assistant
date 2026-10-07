@@ -73,7 +73,14 @@ function readList(key: string): string[] {
 
 function pushList(key: string, value: string): void {
   const next = [value, ...readList(key).filter((item) => item !== value)].slice(0, RECENT_CAP)
-  window.localStorage.setItem(key, JSON.stringify(next))
+  // A full quota or blocked storage (private mode, enterprise policy) must not
+  // take down the navigation the user already committed to.
+  try {
+    window.localStorage.setItem(key, JSON.stringify(next))
+  } catch {
+    // Local state still updates from `readList`-based copies; recency simply
+    // does not survive the reload.
+  }
 }
 
 /** What an option does, shared by the keyboard cursor and the click handler. */
@@ -103,11 +110,14 @@ export function SearchConsole({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      // Escape dismisses the palette only once there is nothing to clear: with a
+      // query in the box the input handler clears it first, so one keypress does
+      // not both wipe the query and close the console in the same stroke.
+      if (event.key === 'Escape' && query.length === 0) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, query])
 
   // The visible data is the latched previous response while a newer query loads,
   // so results never flash away between keystrokes.
@@ -167,6 +177,12 @@ export function SearchConsole({ onClose }: { onClose: () => void }) {
     return flat
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navMatches, hits, activeQuery, openNav, openRecord])
+
+  // Results arriving (or a facet narrowing the list) can shrink the flat option
+  // list below the current cursor; clamp it so focus never points past the end.
+  useEffect(() => {
+    setActive((current) => Math.min(current, Math.max(options.length - 1, 0)))
+  }, [options.length])
 
   useEffect(() => setActive(0), [query, facet])
   useEffect(() => {

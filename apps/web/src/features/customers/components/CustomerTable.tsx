@@ -100,16 +100,21 @@ export function CustomerTable() {
       columnHelper.accessor('status', {
         header: t('columns.status'),
         enableSorting: false,
-        cell: (info) => (
-          <span
-            className={cn(
-              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
-              STATUS_BADGE_CLASSES[info.getValue()],
-            )}
-          >
-            {statusLabels[info.getValue()]}
-          </span>
-        ),
+        cell: (info) => {
+          const status = info.getValue()
+          // A status the API has not validated (or one introduced by a newer
+          // deploy) must still render a legible badge, not an undefined class.
+          return (
+            <span
+              className={cn(
+                'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                STATUS_BADGE_CLASSES[status] ?? 'bg-muted text-muted-foreground',
+              )}
+            >
+              {statusLabels[status] ?? status}
+            </span>
+          )
+        },
       }),
       columnHelper.accessor('totalTransactions', {
         header: t('columns.transactions'),

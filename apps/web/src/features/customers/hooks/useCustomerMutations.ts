@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ApiError } from '@dme/contracts/http'
+import type { ErrorCode } from '@dme/contracts/http'
 import { addCustomer, importCustomers } from '@/features/customers/api/customersApi'
 import type { NewCustomerPayload } from '@/features/customers/types/customer.types'
 import { queryKeys } from '@/lib/query/queryKeys'
@@ -16,6 +18,11 @@ export interface ImportOutcome {
   invalid: ImportRowError[]
 }
 
+/** The outcome of submitting a new customer, so a dialog can branch on why it failed. */
+export type SubmitNewCustomerResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly code?: ErrorCode }
+
 /**
  * Write-path logic shared by the add dialog and the CSV importer.
  *
@@ -25,6 +32,10 @@ export interface ImportOutcome {
  *
  * `error` merges the API failure with any message a dialog set locally (for
  * example "pick a file"), so a component renders one error slot either way.
+ *
+ * `setError`, `resetOutcome` and the submit functions are stable (useCallback),
+ * so a dialog can hold them in an effect dependency array without that effect
+ * re-running on every render — which previously reset the form state in a loop.
  */
 export function useCustomerMutations() {
   const queryClient = useQueryClient()
@@ -54,14 +65,17 @@ export function useCustomerMutations() {
   })
 
   const submitNewCustomer = useCallback(
-    async (input: NewCustomerPayload): Promise<boolean> => {
+    async (input: NewCustomerPayload): Promise<SubmitNewCustomerResult> => {
       setLocalError(null)
       try {
         await createMutation.mutateAsync(input)
-        return true
-      } catch {
-        // Surfaced through `error`; the dialog keeps its input for the retry.
-        return false
+        return { ok: true }
+      } catch (caught) {
+        // Surfaced through `error`; the dialog keeps its input for the retry. The
+        // code lets the dialog show a specific message (a duplicate email) instead of
+        // a generic one.
+        const code = caught instanceof ApiError ? caught.code : undefined
+        return { ok: false, code }
       }
     },
     [createMutation],
@@ -94,19 +108,34 @@ export function useCustomerMutations() {
   )
 
   const apiError = createMutation.error ?? importMutation.error
-  const error = useMemo(() => localError ?? (apiError instanceof Error ? apiError.message : null), [apiError, localError])
+  const errorCode = apiError instanceof ApiError ? apiError.code : null
 
-  return {
-    isSubmitting: createMutation.isPending || importMutation.isPending,
-    error,
-    /** Accepts a local code, or `null` to clear the current failure. */
-    setError: (message: string | null) => {
+  const error = useMemo(() => {
+    if (localError !== null) return localError
+    return apiError instanceof Error ? apiError.message : null
+  }, [apiError, localError])
+
+  /** Clears the merged error slot, including any pending mutation failure. */
+  const setError = useCallback(
+    (message: string | null) => {
       setLocalError(message)
       createMutation.reset()
       importMutation.reset()
     },
+    [createMutation, importMutation],
+  )
+
+  const resetOutcome = useCallback(() => setOutcome(null), [])
+
+  return {
+    isSubmitting: createMutation.isPending || importMutation.isPending,
+    error,
+    /** Machine-readable code of the current API failure, for code-specific messages. */
+    errorCode,
+    /** Accepts a local code, or `null` to clear the current failure. */
+    setError,
     importOutcome: outcome,
-    resetOutcome: () => setOutcome(null),
+    resetOutcome,
     submitNewCustomer,
     submitImport,
   }

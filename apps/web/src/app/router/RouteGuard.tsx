@@ -26,7 +26,10 @@ export function RequireAuth() {
 
   if (status === 'loading' || !hydrated) return <AuthBootScreen />
   if (status === 'anonymous') {
-    return <Navigate to={RoutePath.LOGIN} replace state={{ from: location.pathname }} />
+    // Keep the query string (search filters, ?focus deep links) so the login
+    // redirect drops only the navigation, not the user's context.
+    const from = location.pathname + location.search
+    return <Navigate to={RoutePath.LOGIN} replace state={{ from }} />
   }
   return <Outlet />
 }

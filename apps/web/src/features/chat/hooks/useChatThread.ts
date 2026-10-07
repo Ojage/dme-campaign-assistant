@@ -12,9 +12,20 @@ import { queryKeys } from '@/lib/query/queryKeys'
  * so opening a drawer on the same thread from another page does not refetch or
  * lose history. Only the reply currently being streamed is local, because it does
  * not exist on the server until the last frame arrives.
+ *
+ * A reply that is interrupted — the provider errored, the connection dropped, or
+ * the server closed the stream before a terminal frame — is kept as a "failed
+ * reply". The API persists an assistant turn only once the stream completes, so
+ * keeping the partial locally cannot duplicate anything a later refetch returns;
+ * it preserves what the user actually read instead of erasing it.
  */
 
 interface StreamState {
+  threadId: string
+  text: string
+}
+
+interface FailedReply {
   threadId: string
   text: string
 }
@@ -23,6 +34,7 @@ export function useChatThread(language: 'en' | 'fr', fallback: string) {
   const queryClient = useQueryClient()
   const [threadId, setThreadId] = useState<string | null>(null)
   const [stream, setStream] = useState<StreamState | null>(null)
+  const [failedReply, setFailedReply] = useState<FailedReply | null>(null)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -50,23 +62,27 @@ export function useChatThread(language: 'en' | 'fr', fallback: string) {
     ...(message.model === undefined ? {} : { model: message.model }),
   })) ?? []
 
-  const display: DisplayMessage[] =
-    stream === null
-      ? transcript
-      : [
-          ...transcript,
-          { id: `${stream.threadId}-streaming`, role: 'assistant', text: stream.text, streaming: true },
-        ]
+  const display: DisplayMessage[] = [
+    ...transcript,
+    ...(failedReply === null
+      ? []
+      : [{ id: `${failedReply.threadId}-failed`, role: 'assistant' as const, text: failedReply.text }]),
+    ...(stream === null
+      ? []
+      : [{ id: `${stream.threadId}-streaming`, role: 'assistant' as const, text: stream.text, streaming: true }]),
+  ]
 
   const selectThread = useCallback((id: string) => {
     setThreadId(id)
     setStream(null)
+    setFailedReply(null)
     setError(null)
   }, [])
 
   const reset = useCallback(() => {
     setThreadId(null)
     setStream(null)
+    setFailedReply(null)
     setError(null)
   }, [])
 
@@ -80,9 +96,18 @@ export function useChatThread(language: 'en' | 'fr', fallback: string) {
       const controller = new AbortController()
       abortRef.current = controller
 
+      // "Hello?" (zero deltas before the stream failed) is noise, not a reply.
+      const keepPartial = (thread: string, partial: string) => {
+        if (partial.trim().length === 0) return
+        setFailedReply({ threadId: thread, text: partial })
+      }
+
+      let id: string | null = null
+      let accumulated = ''
+      let finished = false
       try {
         // The thread is created on first use, so the drawer needs no setup step.
-        const id = threadId ?? (await createThread()).id
+        id = threadId ?? (await createThread()).id
         setThreadId(id)
         setStream({ threadId: id, text: '' })
 
@@ -90,20 +115,27 @@ export function useChatThread(language: 'en' | 'fr', fallback: string) {
           if (controller.signal.aborted) return
 
           if (event.type === 'delta') {
-            setStream((current) => (current === null ? null : { ...current, text: current.text + event.text }))
+            accumulated += event.text
+            setStream((current) => (current === null ? null : { ...current, text: accumulated }))
           } else if (event.type === 'done') {
+            finished = true
             setStream(null)
             void queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(id) })
             void queryClient.invalidateQueries({ queryKey: queryKeys.chat.threads })
           } else if (event.type === 'error') {
+            finished = true
+            keepPartial(id, accumulated)
             setStream(null)
             setError(event.message)
           }
         }
 
-        // The server closed the stream without a terminal frame.
+        // The server closed the stream without a terminal frame: anything already
+        // streamed is real output, keep it visible rather than erasing it.
+        if (!finished && !controller.signal.aborted) keepPartial(id ?? '', accumulated)
         setStream(null)
       } catch (cause) {
+        keepPartial(id ?? '', accumulated)
         setStream(null)
         if (controller.signal.aborted) return
         setError(cause instanceof ApiError ? cause.message : fallback)
