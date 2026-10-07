@@ -160,4 +160,4 @@ was covered by tests.
 - **Runtime checks.** Boot logs state which model is bound; failure paths were
   reproduced live (the `UND_ERR_CONNECT_TIMEOUT` chain and the retired-model
   `404`), and the error boundary UI was smoke-tested against a running dev server.
-- **Human review.** Every commit was reviewed as a diff before it was pushed.
+- **I reviewed.** Every commit was reviewed as a diff before it was pushed.
