@@ -107,10 +107,8 @@ Those are two different things, and this section covers both honestly.
 
 To build the project:
 
-- **opencode** — a terminal-based AI coding agent (powered by the *big-pickle*
-  model) used across the whole repository: the API modules, the React app, the
-  shared contracts package, the Docker/CI infrastructure, and this documentation.
-
+- **opencode** — a terminal-based AI coding agent used across the whole repository: the API modules, the React app, the
+  shared contracts package, the Docker/CI infrastructure.
 The product itself runs hosted models at runtime — OpenAI-compatible gateways
 (Anthropic, Gemini, OpenCode Zen) or a deterministic local generator with no key.
 That is a shipped feature, not a development tool, and is covered below in
